@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+database.db
+database.db-shm
+database.db-wal
+uploads/
+test_*.py
+migrate_*.py
+Dockerfile

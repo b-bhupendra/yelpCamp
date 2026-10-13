@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+.env
+database.db
+database.db-shm
+database.db-wal
+uploads/
+.vercel
+
+.vercel
+.env*

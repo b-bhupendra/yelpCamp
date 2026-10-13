@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+*/node_modules/
+venv/
+*/venv/
+.venv/
+*/.venv/
+
+# Python
+__pycache__/
+*/__pycache__/
+*.pyc
+*.pyo
+
+# SQLite DB
+*.db
+*.db-shm
+*.db-wal
+backend/database.db*
+
+# Builds & caches
+dist/
+*/dist/
+.cache/
+.parcel-cache/
+.eslintcache
+
+# Environment variables
+.env.local
+.env.*.local
+
+# Large zip archives
+*.zip
+
+# System & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

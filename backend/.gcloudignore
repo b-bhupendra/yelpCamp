@@ -1,0 +1,17 @@
+.gcloudignore
+.git
+.gitignore
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.vercel/
+.vercelignore
+database.db*
+uploads/
+test_*.py
+seed.py
+migrate_*.py
+.env.local
