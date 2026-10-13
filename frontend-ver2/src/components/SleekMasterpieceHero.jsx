@@ -84,6 +84,55 @@ export default function SleekMasterpieceHero() {
       onMouseMove={handleMouseMove}
       className="relative w-full h-[120vh] overflow-hidden"
     >
+      {/* ── ATMOSPHERIC CAMPSITE HINT LAYER (blurred, faded, ambient glow) ── */}
+      <div 
+        className="pointer-events-none absolute inset-0 z-[4] overflow-hidden select-none"
+        aria-hidden="true"
+      >
+        {/* Softly blurred campsite backdrop with subtle parallax response */}
+        <motion.div 
+          style={reduced ? undefined : {
+            y: useTransform(smoothProgress, [0, 1], [0, 140]),
+            opacity: useTransform(smoothProgress, [0, 0.7], [0.85, 0.2]),
+          }}
+          className="absolute inset-0 w-full h-full"
+        >
+          <div
+            className="absolute inset-0 w-full h-full bg-center bg-cover transition-transform duration-700 ease-out"
+            style={{
+              backgroundImage: 'url(/images/campsite-hero.jpg)',
+              filter: 'blur(3px) brightness(0.62) saturate(1.28)',
+              transform: reduced 
+                ? 'scale(1.04)' 
+                : `scale(1.08) translate3d(${mousePosition.x * -16}px, ${mousePosition.y * -16}px, 0)`,
+              maskImage: 'radial-gradient(ellipse 95% 82% at 50% 52%, black 42%, rgba(0,0,0,0.6) 72%, transparent 98%)',
+              WebkitMaskImage: 'radial-gradient(ellipse 95% 82% at 50% 52%, black 42%, rgba(0,0,0,0.6) 72%, transparent 98%)',
+            }}
+          />
+        </motion.div>
+
+        {/* Campfire warmth & ember hearth illumination */}
+        <div 
+          className="absolute bottom-[24%] left-1/2 -translate-x-1/2 w-[70vw] max-w-[750px] h-[360px] rounded-full pointer-events-none ch-glow"
+          style={{
+            background: 'radial-gradient(circle, rgba(234, 88, 12, 0.32) 0%, rgba(251, 146, 60, 0.14) 42%, transparent 72%)',
+            filter: 'blur(55px)',
+          }}
+        />
+
+        {/* Northern lights aurora haze overlay */}
+        <div 
+          className="absolute top-[6%] left-1/2 -translate-x-1/2 w-[88vw] max-w-[1100px] h-[440px] rounded-full pointer-events-none"
+          style={{
+            background: 'radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, rgba(14, 165, 233, 0.10) 48%, transparent 75%)',
+            filter: 'blur(75px)',
+          }}
+        />
+
+        {/* Cinematic subtle vignette gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-transparent to-background/85" />
+      </div>
+
       {/* LAYER 1: hardware-accelerated canvas */}
       <div className="absolute inset-0 z-10" aria-hidden="true">
         <CanvasErrorBoundary>
@@ -138,15 +187,19 @@ export default function SleekMasterpieceHero() {
       {/* LAYER 2: typography */}
       <motion.div
         style={reduced ? undefined : { y: yText, opacity: opacityText }}
-        className="absolute inset-0 z-20 flex flex-col items-center justify-start pt-[15vh] md:pt-[16vh] pointer-events-none px-4"
+        className="absolute inset-0 z-20 flex flex-col items-center justify-start pt-[14vh] md:pt-[15vh] pointer-events-none px-4"
       >
-        <h1 className="text-[clamp(3.5rem,13vw,12rem)] font-display font-black tracking-[-0.03em] leading-[0.85] text-center text-fg [text-shadow:0_2px_50px_rgba(5,10,20,0.9)]">
+        <span className="inline-flex items-center gap-2 px-3.5 py-1 mb-4 rounded-full border border-sky-400/20 bg-background/60 backdrop-blur-md text-[11px] font-bold uppercase tracking-[0.25em] text-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.2)]">
+          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping" />
+          Under the Stars & Aurora
+        </span>
+        <h1 className="text-[clamp(3.5rem,13vw,12rem)] font-display font-black tracking-[-0.03em] leading-[0.85] text-center text-fg [text-shadow:0_4px_60px_rgba(3,7,18,0.95)]">
           Yelp<br />Camp
         </h1>
       </motion.div>
 
       {/* Fade into the rest of the page */}
-      <div className="absolute bottom-0 w-full h-[20vh] bg-gradient-to-t from-background to-transparent z-30" />
+      <div className="absolute bottom-0 w-full h-[24vh] bg-gradient-to-t from-background via-background/60 to-transparent z-30 pointer-events-none" />
     </div>
   );
 }

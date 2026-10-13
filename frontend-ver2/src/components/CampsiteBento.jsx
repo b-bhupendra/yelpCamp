@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Icon from './Icons';
+import ScrollReveal from './ScrollReveal';
 
 /**
  * CAMPSITE BENTO — a guided grid of campsites that emerges as you scroll.
@@ -163,21 +164,23 @@ export default function CampsiteBento() {
   return (
     <section className="relative z-10 mx-auto max-w-7xl px-6 pt-20 pb-24 md:pt-28 md:pb-32">
       {/* Heading */}
-      <div className="mb-10 flex flex-col gap-6 md:mb-14 md:flex-row md:items-end md:justify-between">
-        <div className="max-w-xl">
-          <p className="mb-4 text-xs font-bold uppercase tracking-[0.3em] text-secondary">
-            Curated campsites
+      <ScrollReveal variant="fade-up" delay={50}>
+        <div className="mb-10 flex flex-col gap-6 md:mb-14 md:flex-row md:items-end md:justify-between">
+          <div className="max-w-xl">
+            <p className="mb-4 text-xs font-bold uppercase tracking-[0.3em] text-secondary">
+              Curated campsites
+            </p>
+            <h2 className="font-display text-3xl font-black leading-[1.02] tracking-tight text-fg md:text-5xl">
+              Places worth pitching <br />
+              <span className="aurora-text">a tent.</span>
+            </h2>
+          </div>
+          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-fg-subtle">
+            <Icon.ArrowDown size={15} className="animate-bounce" />
+            Scroll to wander
           </p>
-          <h2 className="font-display text-3xl font-black leading-[1.02] tracking-tight text-fg md:text-5xl">
-            Places worth pitching <br />
-            <span className="aurora-text">a tent.</span>
-          </h2>
         </div>
-        <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-fg-subtle">
-          <Icon.ArrowDown size={15} className="animate-bounce" />
-          Scroll to wander
-        </p>
-      </div>
+      </ScrollReveal>
 
       {/* Bento grid */}
       <div className="grid grid-cols-1 gap-5 md:auto-rows-[200px] md:grid-cols-4">
@@ -192,15 +195,17 @@ export default function CampsiteBento() {
         ))}
       </div>
 
-      <div className="mt-10 flex justify-center">
-        <Link
-          to="/index"
-          className="inline-flex cursor-pointer items-center gap-2.5 rounded-full border border-border-strong px-8 py-4 text-xs font-bold uppercase tracking-[0.18em] text-fg transition-colors duration-200 hover:border-secondary"
-        >
-          See all campsites
-          <Icon.ArrowRight size={16} />
-        </Link>
-      </div>
+      <ScrollReveal variant="fade-scale" delay={150}>
+        <div className="mt-12 flex justify-center">
+          <Link
+            to="/index"
+            className="inline-flex cursor-pointer items-center gap-2.5 rounded-full border border-border-strong px-8 py-4 text-xs font-bold uppercase tracking-[0.18em] text-fg transition-all duration-300 hover:border-secondary hover:bg-surface-2 hover:shadow-[0_0_25px_rgba(56,189,248,0.2)]"
+          >
+            See all campsites
+            <Icon.ArrowRight size={16} />
+          </Link>
+        </div>
+      </ScrollReveal>
     </section>
   );
 }
