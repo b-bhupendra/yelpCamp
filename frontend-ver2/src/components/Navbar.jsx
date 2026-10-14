@@ -60,7 +60,18 @@ export default function Navbar() {
       </Magnetic>
 
       {/* Desktop navigation */}
-      <div className="hidden md:flex items-center gap-9">
+      <div className="hidden md:flex items-center gap-7">
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent('open-ai-dock', { detail: { mode: 'search' } }))}
+          className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-400/30 hover:border-sky-400/60 text-xs font-semibold uppercase tracking-[0.16em] transition-all duration-200"
+          aria-label="Open AI Vector Search"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+          </svg>
+          <span>AI Search</span>
+        </button>
         {navLink('/index', 'Explore')}
         {user && navLink('/dashboard', 'Dashboard')}
 
@@ -133,6 +144,22 @@ export default function Navbar() {
           id="mobile-nav"
           className="md:hidden absolute top-full left-0 right-0 mx-4 mt-2 rounded-2xl bg-surface/95 backdrop-blur-2xl border border-border/80 shadow-[0_20px_50px_rgba(0,0,0,0.85)] p-4 flex flex-col gap-1.5"
         >
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false);
+              window.dispatchEvent(new CustomEvent('open-ai-dock', { detail: { mode: 'search' } }));
+            }}
+            className="cursor-pointer min-h-[48px] rounded-xl px-4 py-3 text-sm font-semibold text-sky-400 bg-sky-500/10 border border-sky-400/20 hover:bg-sky-500/20 flex items-center justify-between transition-colors text-left"
+          >
+            <span className="flex items-center gap-3">
+              <svg className="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3 1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+              </svg>
+              AI Vector Search & Guide
+            </span>
+            <Icon.ArrowRight size={15} className="text-sky-400" />
+          </button>
           <Link
             to="/index"
             className="cursor-pointer min-h-[48px] rounded-xl px-4 py-3 text-sm font-semibold text-fg hover:bg-white/5 active:bg-white/10 flex items-center justify-between transition-colors"

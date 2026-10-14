@@ -80,3 +80,14 @@ class Vote(SQLModel, table=True):
     
     user: User = Relationship(back_populates="votes")
     campground: Campground = Relationship(back_populates="votes")
+
+class CampgroundEmbedding(SQLModel, table=True):
+    __tablename__ = "campground_embeddings"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    campground_id: int = Field(foreign_key="campground.id", index=True, unique=True)
+    embedding_json: str = Field(default="[]")
+    embedding_dim: int = Field(default=768)
+    content_summary: str = Field(default="")
+    has_image_embedding: bool = Field(default=False)
+    has_video_embedding: bool = Field(default=False)
+    updated_at: str = Field(default="")

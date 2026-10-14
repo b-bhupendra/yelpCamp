@@ -152,6 +152,28 @@ async def create_campground(
     db.add(new_campground)
     db.commit()
     db.refresh(new_campground)
+
+    # Automatically index into Vector RAG database
+    try:
+        from services.multimodal_embedder import multimodal_embedder
+        from services.vector_store import vector_store
+        summary, emb = multimodal_embedder.build_multimodal_profile(
+            name=new_campground.name,
+            description=new_campground.description,
+            price=new_campground.price,
+            image_url=new_campground.image,
+            comments=[]
+        )
+        vector_store.save_embedding(
+            session=db,
+            campground_id=new_campground.id,
+            embedding=emb,
+            content_summary=summary,
+            has_image=True
+        )
+    except Exception:
+        pass
+
     return new_campground
 
 @router.get("/{id}")

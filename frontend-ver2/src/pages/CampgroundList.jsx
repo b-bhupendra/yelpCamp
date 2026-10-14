@@ -119,6 +119,20 @@ export default function CampgroundList() {
                 <Icon.Search size={20} />
               </div>
             </div>
+            <div className="flex items-center justify-between mt-2 px-2">
+              <span className="text-[11px] text-muted-fg font-medium">Search by scenic vibe or terrain?</span>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('open-ai-dock', { detail: { mode: 'search', query: search } }))}
+                className="cursor-pointer inline-flex items-center gap-1 text-[11px] font-semibold text-sky-400 hover:text-sky-300 transition-colors"
+                aria-label="Switch to AI Vector Search"
+              >
+                <svg className="w-3 h-3 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3 1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+                </svg>
+                <span>AI Vector Search</span>
+              </button>
+            </div>
           </div>
         </div>
 

@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 
@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     # Google OAuth 2.0 Credentials
     GOOGLE_CLIENT_ID: str = "YOUR_GOOGLE_CLIENT_ID"
     GOOGLE_CLIENT_SECRET: str = "YOUR_GOOGLE_CLIENT_SECRET"
+    
+    # Gemini Vector RAG & LLM Configuration
+    GEMINI_API_KEY: Optional[str] = None
+    EMBEDDING_MODEL: str = "gemini-embedding-001"
+    CHAT_MODEL: str = "gemini-3.5-flash-lite"
     
     model_config = SettingsConfigDict(
         env_file=".env",

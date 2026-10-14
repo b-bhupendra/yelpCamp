@@ -8,7 +8,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from config import settings
 from database import create_db_and_tables
-from routers import auth, campgrounds, comments, social
+from routers import auth, campgrounds, comments, social, vector_rag
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -71,6 +71,8 @@ app.include_router(comments.router, prefix="/index/{id}/comments")
 # Mount social router at both /{id}/social (for campground context) and /social
 app.include_router(social.router, prefix="/index/{id}/social")
 app.include_router(social.router, prefix="/social")
+app.include_router(vector_rag.router, prefix="/api")
+app.include_router(vector_rag.router)
 
 @app.get("/")
 async def root():

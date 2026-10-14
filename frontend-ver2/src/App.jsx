@@ -5,6 +5,7 @@ import Landing from './pages/Landing';
 import { AuthProvider } from './context/AuthContext';
 import CustomCursor from './components/CustomCursor';
 import SmoothScroll from './components/SmoothScroll';
+import AIAssistantDock from './components/AIAssistantDock';
 
 // Route-level code-splitting for secondary views
 const Login = lazy(() => import('./pages/Login'));
@@ -46,6 +47,7 @@ function App() {
                 <Route path="/campgrounds/:id/edit" element={<EditCampground />} />
               </Routes>
             </Suspense>
+            <AIAssistantDock />
           </div>
         </Router>
       </SmoothScroll>
