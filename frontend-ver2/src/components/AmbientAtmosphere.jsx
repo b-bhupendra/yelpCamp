@@ -128,87 +128,72 @@ export default function AmbientAtmosphere() {
     };
 
     /**
-     * PROCEDURAL AURORA CURTAIN ENGINE
-     * Renders multi-tiered undulating light ribbons with vertical ray striations.
+     * PROCEDURAL AURORA CURTAIN ENGINE (UI/UX Pro Max Edition)
+     * Elegant, subtle celestial veil with soft silk diffusion and glacial drift.
      */
     const drawAuroraCurtains = (animate) => {
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = 0.38; // Soft atmospheric master feathering
 
-      const px = animate ? mouse.x * 24 : 0;
-      const py = animate ? mouse.y * 12 : 0;
+      const px = animate ? mouse.x * 12 : 0;
+      const py = animate ? mouse.y * 8 : 0;
 
-      // Aurora Ribbon Layers: { baseY, height, colors, speed, freq, rayFreq }
+      // Two elegant, upper-sky ribbons (Jade/Cyan & Polar Violet)
       const curtains = [
         {
-          baseY: H * 0.18 + py * 0.6,
-          height: Math.min(H * 0.38, 380),
+          baseY: H * 0.11 + py * 0.4,
+          height: Math.min(H * 0.22, 210),
           colors: [
             { pos: 0, col: 'rgba(56, 189, 248, 0)' },
-            { pos: 0.2, col: 'rgba(16, 185, 129, 0.42)' },
-            { pos: 0.5, col: 'rgba(56, 189, 248, 0.48)' },
-            { pos: 0.8, col: 'rgba(129, 140, 248, 0.28)' },
+            { pos: 0.25, col: 'rgba(16, 185, 129, 0.10)' }, // Arctic Jade
+            { pos: 0.55, col: 'rgba(56, 189, 248, 0.12)' }, // Polar Sky Cyan
+            { pos: 0.85, col: 'rgba(129, 140, 248, 0.07)' }, // Dusk Lavender
             { pos: 1, col: 'rgba(129, 140, 248, 0)' },
           ],
-          speed: 0.6,
-          waveFreq: 0.0016,
-          rayFreq: 0.045,
-          rayIntensity: 0.4,
+          speed: 0.18, // Glacial serene loop (~16s)
+          waveFreq: 0.0011,
+          rayFreq: 0.024,
+          rayIntensity: 0.12,
         },
         {
-          baseY: H * 0.28 + py * 0.8,
-          height: Math.min(H * 0.34, 320),
+          baseY: H * 0.18 + py * 0.6,
+          height: Math.min(H * 0.19, 180),
           colors: [
             { pos: 0, col: 'rgba(16, 185, 129, 0)' },
-            { pos: 0.25, col: 'rgba(52, 211, 153, 0.45)' },
-            { pos: 0.55, col: 'rgba(14, 165, 233, 0.50)' },
-            { pos: 0.85, col: 'rgba(168, 85, 247, 0.22)' },
+            { pos: 0.28, col: 'rgba(52, 211, 153, 0.09)' },
+            { pos: 0.58, col: 'rgba(14, 165, 233, 0.11)' },
+            { pos: 0.88, col: 'rgba(168, 85, 247, 0.06)' },
             { pos: 1, col: 'rgba(168, 85, 247, 0)' },
           ],
-          speed: 0.85,
-          waveFreq: 0.0022,
-          rayFreq: 0.065,
-          rayIntensity: 0.48,
-        },
-        {
-          baseY: H * 0.38 + py,
-          height: Math.min(H * 0.28, 260),
-          colors: [
-            { pos: 0, col: 'rgba(14, 165, 233, 0)' },
-            { pos: 0.3, col: 'rgba(56, 189, 248, 0.35)' },
-            { pos: 0.6, col: 'rgba(16, 185, 129, 0.32)' },
-            { pos: 0.85, col: 'rgba(234, 88, 12, 0.18)' }, // subtle campfire ember harmonic
-            { pos: 1, col: 'rgba(234, 88, 12, 0)' },
-          ],
-          speed: 1.1,
-          waveFreq: 0.0028,
-          rayFreq: 0.08,
-          rayIntensity: 0.35,
+          speed: 0.24,
+          waveFreq: 0.0015,
+          rayFreq: 0.032,
+          rayIntensity: 0.14,
         },
       ];
 
-      const step = 8; // step width in pixels for ray rendering
+      const step = 10; // Pixel interval for soft volumetric rendering
 
       curtains.forEach((curtain) => {
-        const time = animate ? t * curtain.speed : 1.5;
+        const time = animate ? t * curtain.speed : 1.2;
 
         for (let x = 0; x < W; x += step) {
-          // Harmonic wave calculation
-          const wave1 = Math.sin(x * curtain.waveFreq + time * 0.8 + px * 0.01) * 45;
-          const wave2 = Math.cos(x * curtain.waveFreq * 1.8 - time * 0.5) * 22;
-          const wave3 = Math.sin(x * curtain.waveFreq * 0.5 + time * 0.3) * 35;
+          // Gentle, organic harmonic wave calculation
+          const wave1 = Math.sin(x * curtain.waveFreq + time * 0.7 + px * 0.008) * 32;
+          const wave2 = Math.cos(x * curtain.waveFreq * 1.6 - time * 0.4) * 16;
+          const wave3 = Math.sin(x * curtain.waveFreq * 0.4 + time * 0.25) * 22;
           const waveY = curtain.baseY + wave1 + wave2 + wave3;
 
-          // Vertical ray modulation (simulates geomagnetic striations)
-          const rayNoise = Math.sin(x * curtain.rayFreq + time * 1.4) *
-                           Math.cos(x * curtain.rayFreq * 0.6 - time * 0.9);
-          const rayAlpha = Math.max(0.15, 0.65 + rayNoise * curtain.rayIntensity);
-          const rayH = curtain.height * (0.8 + 0.3 * Math.sin(x * 0.01 + time));
+          // Subtle silk ray modulation (soft diffusion without harsh lines)
+          const rayNoise = Math.sin(x * curtain.rayFreq + time * 0.8) *
+                           Math.cos(x * curtain.rayFreq * 0.5 - time * 0.5);
+          const rayAlpha = Math.max(0.72, 0.90 + rayNoise * curtain.rayIntensity);
+          const rayH = curtain.height * (0.85 + 0.2 * Math.sin(x * 0.008 + time));
 
-          // Draw vertical striation gradient
+          // Draw vertical striation gradient with feathered falloff
           const grad = ctx.createLinearGradient(0, waveY - rayH * 0.5, 0, waveY + rayH * 0.5);
           curtain.colors.forEach((c) => {
-            // Adjust alpha with ray intensity
             const match = c.col.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
             if (match) {
               const [_, r, g, b, a] = match;
@@ -381,16 +366,15 @@ export default function AmbientAtmosphere() {
 
   return (
     <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none bg-background">
-      {/* Volumetric Aurora Ambient Gradient Clouds */}
+      {/* Volumetric Aurora Ambient Gradient Clouds (Subtle, luxury depth) */}
       <div
-        className="nebula absolute inset-0 opacity-80"
+        className="nebula absolute inset-0 opacity-35"
         aria-hidden="true"
         style={{
           background: [
-            'radial-gradient(65% 50% at 25% 20%, rgba(16,185,129,0.18), transparent 72%)',
-            'radial-gradient(55% 45% at 75% 24%, rgba(56,189,248,0.22), transparent 72%)',
-            'radial-gradient(60% 48% at 50% 12%, rgba(129,140,248,0.16), transparent 75%)',
-            'radial-gradient(45% 35% at 65% 65%, rgba(234,88,12,0.10), transparent 70%)',
+            'radial-gradient(60% 45% at 25% 14%, rgba(16,185,129,0.08), transparent 72%)',
+            'radial-gradient(50% 40% at 75% 18%, rgba(56,189,248,0.10), transparent 72%)',
+            'radial-gradient(55% 42% at 50% 10%, rgba(129,140,248,0.06), transparent 75%)',
           ].join(','),
         }}
       />

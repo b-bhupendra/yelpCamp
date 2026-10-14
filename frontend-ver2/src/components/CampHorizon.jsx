@@ -63,10 +63,10 @@ export default function CampHorizon({ className = '' }) {
             <stop offset="100%" stopColor="#ea580c" stopOpacity="0" />
           </radialGradient>
 
-          {/* Ambient Warm Hearth Wash */}
+          {/* Ambient Warm Hearth Wash (Soft, balanced glow) */}
           <radialGradient id="hearth-wash" cx="50%" cy="80%" r="70%">
-            <stop offset="0%" stopColor="#ea580c" stopOpacity="0.26" />
-            <stop offset="50%" stopColor="#fb923c" stopOpacity="0.08" />
+            <stop offset="0%" stopColor="#ea580c" stopOpacity="0.18" />
+            <stop offset="50%" stopColor="#fb923c" stopOpacity="0.05" />
             <stop offset="100%" stopColor="#ea580c" stopOpacity="0" />
           </radialGradient>
         </defs>

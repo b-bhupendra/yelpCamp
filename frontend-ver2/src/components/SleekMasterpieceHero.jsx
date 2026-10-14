@@ -89,26 +89,26 @@ export default function SleekMasterpieceHero() {
         className="pointer-events-none absolute inset-0 z-[4] overflow-hidden select-none"
         aria-hidden="true"
       >
-        {/* Upper Aurora Luminous Bloom */}
+        {/* Upper Aurora Ethereal Bloom (Soft, non-competing) */}
         <div 
-          className="absolute top-[8%] left-1/2 -translate-x-1/2 w-[85vw] max-w-[1100px] h-[480px] rounded-full pointer-events-none"
+          className="absolute top-[6%] left-1/2 -translate-x-1/2 w-[80vw] max-w-[950px] h-[380px] rounded-full pointer-events-none"
           style={{
-            background: 'radial-gradient(circle, rgba(16, 185, 129, 0.16) 0%, rgba(56, 189, 248, 0.22) 35%, rgba(129, 140, 248, 0.12) 65%, transparent 80%)',
-            filter: 'blur(75px)',
+            background: 'radial-gradient(circle, rgba(16, 185, 129, 0.06) 0%, rgba(56, 189, 248, 0.08) 40%, rgba(129, 140, 248, 0.04) 70%, transparent 80%)',
+            filter: 'blur(80px)',
           }}
         />
 
         {/* Campfire warmth & ember hearth reflection from horizon */}
         <div 
-          className="absolute bottom-[22%] left-1/2 -translate-x-1/2 w-[70vw] max-w-[750px] h-[340px] rounded-full pointer-events-none ch-glow"
+          className="absolute bottom-[22%] left-1/2 -translate-x-1/2 w-[65vw] max-w-[650px] h-[280px] rounded-full pointer-events-none ch-glow"
           style={{
-            background: 'radial-gradient(circle, rgba(234, 88, 12, 0.24) 0%, rgba(251, 146, 60, 0.10) 45%, transparent 72%)',
-            filter: 'blur(60px)',
+            background: 'radial-gradient(circle, rgba(234, 88, 12, 0.16) 0%, rgba(251, 146, 60, 0.06) 45%, transparent 72%)',
+            filter: 'blur(65px)',
           }}
         />
 
         {/* Soft twilight gradient framing */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-transparent to-background/85" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/90" />
       </div>
 
       {/* LAYER 1: hardware-accelerated canvas */}
@@ -153,13 +153,13 @@ export default function SleekMasterpieceHero() {
         </CanvasErrorBoundary>
       </div>
 
-      {/* Aurora light spill — ties the orb to the surrounding sky */}
+      {/* Gentle ambient halo for 3D orb specular depth */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-1/2 z-[15] h-[76vh] w-[76vh] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        className="pointer-events-none absolute left-1/2 top-1/2 z-[15] h-[64vh] w-[64vh] -translate-x-1/2 -translate-y-1/2 rounded-full"
         style={{
-          background: 'radial-gradient(circle, rgba(56,189,248,0.20) 0%, rgba(14,165,233,0.10) 38%, rgba(234,88,12,0.10) 62%, transparent 72%)',
-          filter: 'blur(50px)',
+          background: 'radial-gradient(circle, rgba(56,189,248,0.08) 0%, rgba(14,165,233,0.04) 40%, transparent 70%)',
+          filter: 'blur(60px)',
         }}
       />
 
