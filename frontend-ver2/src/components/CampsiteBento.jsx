@@ -98,11 +98,12 @@ const CAMPSITES = [
 
 const CATEGORIES = ['All', 'Riverside', 'Ridge & Alpine', 'Dark Sky', 'Forest'];
 
-function CampsiteCard({ camp, delay, visible, cardRef }) {
+function CampsiteCard({ camp, index, delay, visible, cardRef }) {
   return (
     <Link
       ref={cardRef}
       to="/index"
+      data-bento-idx={index}
       style={{ transitionDelay: `${delay}ms` }}
       className={`bento-emerge group relative block aspect-[16/10] sm:aspect-auto overflow-hidden rounded-2xl sm:rounded-3xl border border-border/80 bg-surface/60 backdrop-blur-md ${camp.span} ${
         visible ? 'is-visible' : ''
@@ -168,43 +169,36 @@ export default function CampsiteBento() {
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      const all = CAMPSITES.map(() => true);
-      visibleRef.current = all;
-      setVisible(all);
+      setVisible(CAMPSITES.map(() => true));
       return;
     }
 
-    let raf = 0;
-    let frames = 0;
-    const MAX_FRAMES = 3600;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const index = Number(entry.target.getAttribute('data-bento-idx'));
+            if (!isNaN(index)) {
+              setVisible((prev) => {
+                if (prev[index]) return prev;
+                const next = [...prev];
+                next[index] = true;
+                return next;
+              });
+            }
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+    );
 
-    const tick = () => {
-      frames += 1;
-      const vh = window.innerHeight;
-      const cur = visibleRef.current.slice();
-      let changed = false;
+    refs.current.forEach((el) => {
+      if (el) observer.observe(el);
+    });
 
-      refs.current.forEach((el, i) => {
-        if (cur[i] || !el) return;
-        const r = el.getBoundingClientRect();
-        if (r.top < vh * 0.94 && r.bottom > 0) {
-          cur[i] = true;
-          changed = true;
-        }
-      });
-
-      if (changed) {
-        visibleRef.current = cur;
-        setVisible(cur);
-      }
-      if (!cur.every(Boolean) && frames < MAX_FRAMES) {
-        raf = requestAnimationFrame(tick);
-      }
-    };
-
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, []);
+    return () => observer.disconnect();
+  }, [filteredCampsites]);
 
   return (
     <section className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 pt-16 pb-20 sm:pt-24 sm:pb-28 md:pt-32 md:pb-36">
@@ -252,6 +246,7 @@ export default function CampsiteBento() {
           <CampsiteCard
             key={camp.name}
             camp={camp}
+            index={i}
             delay={i * 80}
             visible={visible[i]}
             cardRef={(el) => { refs.current[i] = el; }}

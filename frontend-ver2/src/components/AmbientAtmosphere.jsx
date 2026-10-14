@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 /**
  * AMBIENT ATMOSPHERE — PROCEDURAL AURORA BOREALIS & NIGHT SKY
@@ -32,6 +32,7 @@ const STAR_LAYERS = [
 
 export default function AmbientAtmosphere() {
   const canvasRef = useRef(null);
+  const [canvasLoaded, setCanvasLoaded] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -140,16 +141,17 @@ export default function AmbientAtmosphere() {
       const py = animate ? mouse.y * 8 : 0;
 
       // Two elegant, upper-sky ribbons (Jade/Cyan & Polar Violet)
+      // Colors are pre-parsed into { pos, r, g, b, a } to completely eliminate regex in the inner loop
       const curtains = [
         {
           baseY: H * 0.11 + py * 0.4,
           height: Math.min(H * 0.22, 210),
-          colors: [
-            { pos: 0, col: 'rgba(56, 189, 248, 0)' },
-            { pos: 0.25, col: 'rgba(16, 185, 129, 0.10)' }, // Arctic Jade
-            { pos: 0.55, col: 'rgba(56, 189, 248, 0.12)' }, // Polar Sky Cyan
-            { pos: 0.85, col: 'rgba(129, 140, 248, 0.07)' }, // Dusk Lavender
-            { pos: 1, col: 'rgba(129, 140, 248, 0)' },
+          stops: [
+            { pos: 0, r: 56, g: 189, b: 248, a: 0 },
+            { pos: 0.25, r: 16, g: 185, b: 129, a: 0.10 }, // Arctic Jade
+            { pos: 0.55, r: 56, g: 189, b: 248, a: 0.12 }, // Polar Sky Cyan
+            { pos: 0.85, r: 129, g: 140, b: 248, a: 0.07 }, // Dusk Lavender
+            { pos: 1, r: 129, g: 140, b: 248, a: 0 },
           ],
           speed: 0.18, // Glacial serene loop (~16s)
           waveFreq: 0.0011,
@@ -159,12 +161,12 @@ export default function AmbientAtmosphere() {
         {
           baseY: H * 0.18 + py * 0.6,
           height: Math.min(H * 0.19, 180),
-          colors: [
-            { pos: 0, col: 'rgba(16, 185, 129, 0)' },
-            { pos: 0.28, col: 'rgba(52, 211, 153, 0.09)' },
-            { pos: 0.58, col: 'rgba(14, 165, 233, 0.11)' },
-            { pos: 0.88, col: 'rgba(168, 85, 247, 0.06)' },
-            { pos: 1, col: 'rgba(168, 85, 247, 0)' },
+          stops: [
+            { pos: 0, r: 16, g: 185, b: 129, a: 0 },
+            { pos: 0.28, r: 52, g: 211, b: 153, a: 0.09 },
+            { pos: 0.58, r: 14, g: 165, b: 233, a: 0.11 },
+            { pos: 0.88, r: 168, g: 85, b: 247, a: 0.06 },
+            { pos: 1, r: 168, g: 85, b: 247, a: 0 },
           ],
           speed: 0.24,
           waveFreq: 0.0015,
@@ -194,15 +196,9 @@ export default function AmbientAtmosphere() {
 
           // Draw vertical striation gradient with feathered falloff
           const grad = ctx.createLinearGradient(0, waveY - rayH * 0.5, 0, waveY + rayH * 0.5);
-          curtain.colors.forEach((c) => {
-            const match = c.col.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
-            if (match) {
-              const [_, r, g, b, a] = match;
-              const modulatedA = Math.min(1, parseFloat(a) * rayAlpha);
-              grad.addColorStop(c.pos, `rgba(${r},${g},${b},${modulatedA})`);
-            } else {
-              grad.addColorStop(c.pos, c.col);
-            }
+          curtain.stops.forEach((c) => {
+            const modulatedA = Math.min(1, c.a * rayAlpha);
+            grad.addColorStop(c.pos, `rgba(${c.r},${c.g},${c.b},${modulatedA})`);
           });
 
           ctx.fillStyle = grad;
@@ -354,10 +350,12 @@ export default function AmbientAtmosphere() {
       paintSky();
       drawAuroraCurtains(false);
       drawStars(false);
+      setCanvasLoaded(true);
     } else {
       window.addEventListener('mousemove', onMove, { passive: true });
       document.addEventListener('visibilitychange', onVisibility);
       raf = requestAnimationFrame(frame);
+      requestAnimationFrame(() => setCanvasLoaded(true));
     }
 
     return () => {
@@ -385,7 +383,11 @@ export default function AmbientAtmosphere() {
       />
 
       {/* Real-time Procedural Aurora Canvas */}
-      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full block" />
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 h-full w-full block transition-opacity duration-700 ease-out"
+        style={{ opacity: canvasLoaded ? 1 : 0 }}
+      />
 
       {/* Ambient Vignette & Depth Mask */}
       <div className="absolute inset-0 shadow-[inset_0_0_160px_rgba(2,5,11,0.85)] pointer-events-none" />

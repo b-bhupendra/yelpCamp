@@ -65,6 +65,7 @@ export default function SleekMasterpieceHero() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [reduced, setReduced] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState({ isMobile: false, isTouch: false });
+  const [canvasReady, setCanvasReady] = useState(false);
 
   useEffect(() => {
     const mqReduced = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -142,12 +143,17 @@ export default function SleekMasterpieceHero() {
       </div>
 
       {/* LAYER 1: hardware-accelerated canvas */}
-      <div className="absolute inset-0 z-10" aria-hidden="true">
+      <div
+        className="absolute inset-0 z-10 transition-opacity duration-1000 ease-out"
+        style={{ opacity: canvasReady ? 1 : 0 }}
+        aria-hidden="true"
+      >
         <CanvasErrorBoundary>
         <Canvas
+          onCreated={() => setCanvasReady(true)}
           camera={{ position: [0, 0, deviceInfo.isMobile ? 5.8 : 6.5], fov: 45 }}
           gl={{ alpha: true, antialias: true, powerPreference: 'high-performance' }}
-          dpr={deviceInfo.isMobile ? [1, 1.5] : [1, 2]}
+          dpr={deviceInfo.isMobile ? [1, 1.25] : [1, 1.5]}
           frameloop={reduced ? 'demand' : 'always'}
         >
           <ambientLight intensity={0.16} />

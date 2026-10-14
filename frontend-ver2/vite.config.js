@@ -18,5 +18,32 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (
+            id.includes('three') ||
+            id.includes('@react-three') ||
+            id.includes('framer-motion-3d')
+          ) {
+            return 'vendor-three';
+          }
+          if (id.includes('framer-motion') || id.includes('lenis')) {
+            return 'vendor-motion';
+          }
+          if (
+            id.includes('react') ||
+            id.includes('react-dom') ||
+            id.includes('react-router-dom') ||
+            id.includes('axios')
+          ) {
+            return 'vendor-core';
+          }
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1200,
+  },
 })
 

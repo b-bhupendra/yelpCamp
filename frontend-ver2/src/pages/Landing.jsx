@@ -113,7 +113,7 @@ export default function Landing() {
 
         {/* Hero Quick Tags & Magnetic CTA Button */}
         <div className="relative z-50 flex flex-col items-center gap-4 sm:gap-6 px-4 sm:px-6">
-          <ScrollReveal variant="fade-up" delay={200} duration={700}>
+          <ScrollReveal priority={true} variant="fade-up" delay={150} duration={700}>
             <ul className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2.5 max-w-xs sm:max-w-xl md:max-w-3xl">
               {HERO_FEATURES.map((f) => (
                 <li key={f.label}>
@@ -126,7 +126,7 @@ export default function Landing() {
             </ul>
           </ScrollReveal>
 
-          <ScrollReveal variant="fade-scale" delay={350} duration={800}>
+          <ScrollReveal priority={true} variant="fade-scale" delay={280} duration={800}>
             <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full sm:w-auto px-2 sm:px-0">
               <Magnetic strength={0.25}>
                 <Link

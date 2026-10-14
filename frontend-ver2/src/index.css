@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════
@@ -301,6 +300,24 @@
   opacity: 1;
   filter: none;
   transform: none;
+}
+
+/* ═══════════════════════════════════════
+   HERO ENTRANCE — Smooth 60fps locked initial reveal
+   ═══════════════════════════════════════ */
+@keyframes heroEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-hero-entrance {
+  animation: heroEntrance 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* ═══════════════════════════════════════

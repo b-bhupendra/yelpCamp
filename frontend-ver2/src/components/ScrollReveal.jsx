@@ -12,13 +12,16 @@ export default function ScrollReveal({
   duration = 800,
   variant = 'fade-up', // 'fade-up' | 'fade-scale' | 'fade-in'
   threshold = 0.15,
+  priority = false, // Immediate hardware-accelerated entrance for above-the-fold elements
   as: Component = 'div',
   ...props
 }) {
   const ref = useRef(null);
-  const [isRevealed, setIsRevealed] = useState(false);
+  const [isRevealed, setIsRevealed] = useState(priority);
 
   useEffect(() => {
+    if (priority) return;
+
     // Respect user's motion preferences
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setIsRevealed(true);
@@ -40,7 +43,7 @@ export default function ScrollReveal({
 
     observer.observe(element);
     return () => observer.disconnect();
-  }, [threshold]);
+  }, [threshold, priority]);
 
   const getVariantStyles = () => {
     if (isRevealed) {
@@ -77,13 +80,17 @@ export default function ScrollReveal({
   return (
     <Component
       ref={ref}
-      className={`will-change-[transform,opacity,filter] ${className}`}
+      className={`will-change-[transform,opacity,filter] ${priority ? 'animate-hero-entrance' : ''} ${className}`}
       style={{
         ...getVariantStyles(),
-        transitionProperty: 'opacity, transform, filter',
-        transitionDuration: `${duration}ms`,
-        transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
-        transitionDelay: `${delay}ms`,
+        ...(priority
+          ? { animationDelay: `${delay}ms` }
+          : {
+              transitionProperty: 'opacity, transform, filter',
+              transitionDuration: `${duration}ms`,
+              transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+              transitionDelay: `${delay}ms`,
+            }),
       }}
       {...props}
     >
