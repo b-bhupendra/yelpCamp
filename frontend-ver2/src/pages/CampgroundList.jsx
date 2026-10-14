@@ -10,7 +10,8 @@ import Icon from '../components/Icons';
    ─────────────────────────────────────────── */
 function TiltCard({ children, className = "" }) {
   const cardRef = useRef(null);
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const rectRef = useRef(null);
+  const rafId = useRef(null);
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
@@ -19,23 +20,45 @@ function TiltCard({ children, className = "" }) {
     setEnabled(fine && !reduced);
   }, []);
 
-  const handleMouseMove = (e) => {
+  const handleMouseEnter = () => {
     if (!enabled || !cardRef.current) return;
-    const { left, top, width, height } = cardRef.current.getBoundingClientRect();
-    const x = (e.clientX - (left + width / 2)) / (width / 2);
-    const y = (e.clientY - (top + height / 2)) / (height / 2);
-    setTilt({ x: x * 8, y: -y * 8 });
+    rectRef.current = cardRef.current.getBoundingClientRect();
+    cardRef.current.style.transition = 'transform 0.1s ease-out';
   };
 
-  const handleMouseLeave = () => setTilt({ x: 0, y: 0 });
+  const handleMouseMove = (e) => {
+    if (!enabled || !cardRef.current) return;
+    if (!rectRef.current) {
+      rectRef.current = cardRef.current.getBoundingClientRect();
+    }
+    const { left, top, width, height } = rectRef.current;
+    const x = (e.clientX - (left + width / 2)) / (width / 2);
+    const y = (e.clientY - (top + height / 2)) / (height / 2);
+
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    rafId.current = requestAnimationFrame(() => {
+      if (cardRef.current) {
+        cardRef.current.style.transform = `perspective(1000px) rotateX(${-y * 8}deg) rotateY(${x * 8}deg)`;
+      }
+    });
+  };
+
+  const handleMouseLeave = () => {
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    rectRef.current = null;
+    if (cardRef.current) {
+      cardRef.current.style.transition = 'transform 0.4s cubic-bezier(0.23, 1, 0.32, 1)';
+      cardRef.current.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg)';
+    }
+  };
 
   return (
     <div
       ref={cardRef}
+      onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className={`transition-transform duration-200 ease-out ${className}`}
-      style={{ transform: `perspective(1000px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)` }}
+      className={className}
     >
       {children}
     </div>

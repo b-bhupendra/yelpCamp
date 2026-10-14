@@ -2,14 +2,13 @@ import React, { useRef, useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Environment, Lightformer, Float, MeshDistortMaterial, ContactShadows } from '@react-three/drei';
-import { motion as motion3d } from 'framer-motion-3d';
 import CanvasErrorBoundary from './CanvasErrorBoundary';
 
 /**
  * THE HERO CENTERPIECE — liquid-chrome geometry lit by the aurora palette.
- * Reacts physically to the pointer for a weighty, premium feel.
+ * Reacts physically to the pointer in the WebGL frame loop without React re-renders.
  */
-function LiquidChromeGeometry({ mousePosition, isMobile, isTouch }) {
+function LiquidChromeGeometry({ isMobile, isTouch }) {
   const meshRef = useRef();
 
   useFrame((state) => {
@@ -19,6 +18,12 @@ function LiquidChromeGeometry({ mousePosition, isMobile, isTouch }) {
     if (isTouch) {
       meshRef.current.rotation.y = Math.sin(t * 0.45) * 0.22;
       meshRef.current.rotation.x = Math.cos(t * 0.35) * 0.14;
+    } else {
+      // Damped pointer follow directly in WebGL frame loop without React re-renders
+      const targetY = state.pointer.x * 0.4;
+      const targetX = -state.pointer.y * 0.4;
+      meshRef.current.rotation.y += (targetY - meshRef.current.rotation.y) * 0.05;
+      meshRef.current.rotation.x += (targetX - meshRef.current.rotation.x) * 0.05;
     }
     meshRef.current.rotation.z = Math.sin(t * 0.5) * 0.1;
   });
@@ -28,19 +33,10 @@ function LiquidChromeGeometry({ mousePosition, isMobile, isTouch }) {
 
   return (
     <Float speed={2} rotationIntensity={0.2} floatIntensity={0.5}>
-      <motion3d.mesh
+      <mesh
         ref={meshRef}
         position={[0, geoY, 0]}
         scale={[geoScale, geoScale, geoScale]}
-        animate={
-          isTouch
-            ? undefined
-            : {
-                rotateX: mousePosition.y * 0.5,
-                rotateY: mousePosition.x * 0.5,
-              }
-        }
-        transition={{ type: 'spring', stiffness: 50, damping: 20, mass: 1.5 }}
         castShadow
       >
         <icosahedronGeometry args={[1, isMobile ? 32 : 64]} />
@@ -55,14 +51,13 @@ function LiquidChromeGeometry({ mousePosition, isMobile, isTouch }) {
           clearcoat={0.5}
           clearcoatRoughness={0.35}
         />
-      </motion3d.mesh>
+      </mesh>
     </Float>
   );
 }
 
 export default function SleekMasterpieceHero() {
   const containerRef = useRef(null);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [reduced, setReduced] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState({ isMobile: false, isTouch: false });
   const [canvasReady, setCanvasReady] = useState(false);
@@ -100,19 +95,9 @@ export default function SleekMasterpieceHero() {
   const yText = useTransform(smoothProgress, [0, 1], [0, 360]);
   const opacityText = useTransform(smoothProgress, [0, 0.45], [1, 0]);
 
-  const handleMouseMove = (e) => {
-    if (reduced || deviceInfo.isTouch) return;
-    const { clientX, clientY } = e;
-    const { innerWidth, innerHeight } = window;
-    const x = (clientX / innerWidth) * 2 - 1;
-    const y = -(clientY / innerHeight) * 2 + 1;
-    setMousePosition({ x, y });
-  };
-
   return (
     <div
       ref={containerRef}
-      onMouseMove={handleMouseMove}
       className="relative w-full min-h-[100dvh] h-[100dvh] md:h-[120vh] overflow-hidden"
     >
       {/* ── AURORA LIGHT SPILL & AMBIENT HEARTH GLOW (Allowing procedural aurora to shine) ── */}
@@ -176,7 +161,6 @@ export default function SleekMasterpieceHero() {
           <pointLight position={[0, -2.6, 2.6]} intensity={1.7} distance={11} decay={2} color="#ea580c" />
 
           <LiquidChromeGeometry
-            mousePosition={reduced ? { x: 0, y: 0 } : mousePosition}
             isMobile={deviceInfo.isMobile}
             isTouch={deviceInfo.isTouch}
           />
