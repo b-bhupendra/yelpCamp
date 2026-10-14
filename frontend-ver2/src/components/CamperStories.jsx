@@ -34,28 +34,28 @@ const STORIES = [
 
 export default function CamperStories() {
   return (
-    <section className="relative z-10 mx-auto max-w-7xl px-6 py-20 md:py-32">
+    <section className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-20 md:py-32">
       <ScrollReveal variant="fade-up" delay={50}>
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="inline-flex items-center gap-2 px-3.5 py-1 mb-3 rounded-full border border-sky-400/20 bg-surface/80 text-[11px] font-bold uppercase tracking-[0.25em] text-secondary">
+        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
+          <span className="inline-flex items-center gap-2 px-3 py-1 mb-2.5 sm:mb-3 rounded-full border border-sky-400/20 bg-surface/80 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.22em] sm:tracking-[0.25em] text-secondary">
             Voices From The Trail
           </span>
-          <h2 className="font-display text-3xl font-black leading-[1.05] tracking-tight text-fg md:text-5xl">
+          <h2 className="font-display text-2xl sm:text-3xl font-black leading-[1.05] tracking-tight text-fg md:text-5xl">
             Tested by the <span className="aurora-text">backcountry community.</span>
           </h2>
-          <p className="mt-4 text-sm md:text-base text-fg-muted">
+          <p className="mt-3 sm:mt-4 text-xs sm:text-sm md:text-base text-fg-muted">
             Unfiltered stories, verified site conditions, and memorable nights under the northern lights.
           </p>
         </div>
       </ScrollReveal>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
         {STORIES.map((story, i) => (
           <ScrollReveal
             key={story.author}
             variant="fade-up"
             delay={i * 120}
-            className="glass-titanium p-8 rounded-3xl relative group flex flex-col justify-between hover:border-secondary/40 transition-all duration-300"
+            className="glass-titanium p-6 sm:p-8 rounded-2xl sm:rounded-3xl relative group flex flex-col justify-between hover:border-secondary/40 transition-all duration-300"
           >
             <div>
               {/* Stars & Badge */}

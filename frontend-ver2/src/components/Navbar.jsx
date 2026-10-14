@@ -110,7 +110,7 @@ export default function Navbar() {
       {/* Mobile trigger */}
       <button
         onClick={() => setMenuOpen((v) => !v)}
-        className="cursor-pointer md:hidden inline-flex items-center justify-center w-11 h-11 rounded-full border border-border text-fg"
+        className="cursor-pointer md:hidden inline-flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] rounded-full border border-border text-fg active:scale-95 transition-transform"
         aria-expanded={menuOpen}
         aria-controls="mobile-nav"
         aria-label={menuOpen ? 'Close menu' : 'Open menu'}
@@ -118,28 +118,69 @@ export default function Navbar() {
         {menuOpen ? <Icon.Close size={20} /> : <Icon.Menu size={20} />}
       </button>
 
+      {/* Mobile backdrop overlay */}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[-1] md:hidden"
+          onClick={() => setMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Mobile sheet */}
       {menuOpen && (
         <div
           id="mobile-nav"
-          className="md:hidden absolute top-full left-0 right-0 mx-4 mt-2 rounded-2xl glass-obsidian-strong border border-border p-4 flex flex-col gap-1"
+          className="md:hidden absolute top-full left-0 right-0 mx-4 mt-2 rounded-2xl bg-surface/95 backdrop-blur-2xl border border-border/80 shadow-[0_20px_50px_rgba(0,0,0,0.85)] p-4 flex flex-col gap-1.5"
         >
-          <Link to="/index" className="cursor-pointer rounded-xl px-4 py-3 text-sm font-semibold text-fg hover:bg-white/5 transition-colors">Explore</Link>
+          <Link
+            to="/index"
+            className="cursor-pointer min-h-[48px] rounded-xl px-4 py-3 text-sm font-semibold text-fg hover:bg-white/5 active:bg-white/10 flex items-center justify-between transition-colors"
+          >
+            <span className="flex items-center gap-3">
+              <Icon.Compass size={18} className="text-secondary" />
+              Explore Campsites
+            </span>
+            <Icon.ArrowRight size={15} className="text-fg-subtle" />
+          </Link>
           {user && (
-            <Link to="/dashboard" className="cursor-pointer rounded-xl px-4 py-3 text-sm font-semibold text-fg hover:bg-white/5 transition-colors">Dashboard</Link>
+            <Link
+              to="/dashboard"
+              className="cursor-pointer min-h-[48px] rounded-xl px-4 py-3 text-sm font-semibold text-fg hover:bg-white/5 active:bg-white/10 flex items-center justify-between transition-colors"
+            >
+              <span className="flex items-center gap-3">
+                <Icon.Users size={18} className="text-secondary" />
+                Dashboard
+              </span>
+              <Icon.ArrowRight size={15} className="text-fg-subtle" />
+            </Link>
           )}
+          <div className="h-px bg-border/60 my-1" />
           {user ? (
             <button
               onClick={handleLogout}
-              className="cursor-pointer text-left rounded-xl px-4 py-3 text-sm font-semibold text-fg-muted hover:bg-white/5 transition-colors"
+              className="cursor-pointer min-h-[48px] text-left rounded-xl px-4 py-3 text-sm font-semibold text-fg-muted hover:bg-white/5 active:bg-white/10 flex items-center justify-between transition-colors"
             >
-              Log out
+              <span className="flex items-center gap-3">
+                <Icon.LogOut size={18} className="text-destructive" />
+                Log out ({user.username})
+              </span>
             </button>
           ) : (
-            <>
-              <Link to="/login" className="cursor-pointer rounded-xl px-4 py-3 text-sm font-semibold text-fg hover:bg-white/5 transition-colors">Sign in</Link>
-              <Link to="/register" className="cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-on-primary bg-primary text-center">Join</Link>
-            </>
+            <div className="flex flex-col gap-2 pt-1">
+              <Link
+                to="/login"
+                className="cursor-pointer min-h-[48px] rounded-xl px-4 py-3 text-sm font-semibold text-fg border border-border/80 hover:bg-white/5 active:bg-white/10 text-center transition-colors flex items-center justify-center"
+              >
+                Sign in
+              </Link>
+              <Link
+                to="/register"
+                className="cursor-pointer min-h-[48px] rounded-xl px-4 py-3 text-sm font-bold text-on-primary bg-primary text-center shadow-[0_0_25px_rgba(14,165,233,0.35)] flex items-center justify-center transition-transform active:scale-[0.98]"
+              >
+                Join YelpCamp
+              </Link>
+            </div>
           )}
         </div>
       )}

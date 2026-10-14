@@ -24,6 +24,50 @@ function Pine({ x, y, h, fill }) {
   );
 }
 
+function CampsiteVignette({ transform, className = "" }) {
+  return (
+    <g className={`campsite-vignette ${className}`} transform={transform}>
+      {/* Ambient Warm Light Dome */}
+      <ellipse cx="60" cy="55" rx="140" ry="70" fill="url(#hearth-wash)" />
+
+      {/* ── GLOWING BACKCOUNTRY TENT ── */}
+      <g transform="translate(0, 10)">
+        {/* Outer Tent Silhouette */}
+        <path d="M0 45 L32 0 L64 45 Z" fill="#030812" />
+        {/* Tent Guy-lines */}
+        <line x1="32" y1="0" x2="-8" y2="46" stroke="#fbbf24" strokeWidth="0.8" strokeOpacity="0.4" />
+        <line x1="32" y1="0" x2="72" y2="46" stroke="#fbbf24" strokeWidth="0.8" strokeOpacity="0.4" />
+        {/* Illuminated Tent Inner Canvas (Pulsing warm glow) */}
+        <polygon points="12,44 32,8 52,44" fill="url(#tent-glow)" opacity="0.92" className="ch-glow" />
+        {/* Tent Vestibule / Door Shadow */}
+        <polygon points="28,44 32,16 36,44" fill="#070d18" opacity="0.65" />
+      </g>
+
+      {/* ── CRACKLING CAMPFIRE HEARTH ── */}
+      <g transform="translate(90, 36)">
+        {/* Hearth Stones */}
+        <ellipse cx="14" cy="18" rx="14" ry="5" fill="#010307" />
+        {/* Campfire Flame Glow */}
+        <circle cx="14" cy="14" r="28" fill="url(#fire-glow)" opacity="0.8" className="ch-glow" />
+        {/* Flame Shapes */}
+        <path
+          d="M10 18 Q14 2 14 6 Q14 2 18 18 Q14 12 10 18 Z"
+          fill="#fbbf24"
+          className="ch-glow"
+        />
+        <path
+          d="M12 18 Q14 8 15 11 Q15 8 16 18 Z"
+          fill="#fff7ed"
+        />
+        {/* Floating Campfire Embers */}
+        <circle cx="12" cy="6" r="1.2" fill="#fb923c" opacity="0.85" className="animate-ping" style={{ animationDuration: '2.5s' }} />
+        <circle cx="16" cy="1" r="1" fill="#ea580c" opacity="0.9" className="animate-pulse" />
+        <circle cx="13" cy="-5" r="0.8" fill="#fbbf24" opacity="0.75" />
+      </g>
+    </g>
+  );
+}
+
 export default function CampHorizon({ className = '' }) {
   return (
     <div className={`relative w-full h-full ${className}`}>
@@ -117,46 +161,15 @@ export default function CampHorizon({ className = '' }) {
           fill="#02050a"
         />
 
-        {/* ── CAMPSITE HEARTH & TENT VIGNETTE (Centered at x: 1140, y: 285) ── */}
-        <g className="campsite-vignette" transform="translate(1080, 240)">
-          {/* Ambient Warm Light Dome */}
-          <ellipse cx="60" cy="55" rx="140" ry="70" fill="url(#hearth-wash)" />
+        {/* ── RESPONSIVE CAMPSITE HEARTH & TENT VIGNETTE ── */}
+        {/* Mobile: Centered at x: 635, directly visible in mobile portrait aspect slice */}
+        <CampsiteVignette className="sm:hidden" transform="translate(635, 246) scale(0.92)" />
 
-          {/* ── GLOWING BACKCOUNTRY TENT ── */}
-          <g transform="translate(0, 10)">
-            {/* Outer Tent Silhouette */}
-            <path d="M0 45 L32 0 L64 45 Z" fill="#030812" />
-            {/* Tent Guy-lines */}
-            <line x1="32" y1="0" x2="-8" y2="46" stroke="#fbbf24" strokeWidth="0.8" strokeOpacity="0.4" />
-            <line x1="32" y1="0" x2="72" y2="46" stroke="#fbbf24" strokeWidth="0.8" strokeOpacity="0.4" />
-            {/* Illuminated Tent Inner Canvas (Pulsing warm glow) */}
-            <polygon points="12,44 32,8 52,44" fill="url(#tent-glow)" opacity="0.92" className="ch-glow" />
-            {/* Tent Vestibule / Door Shadow */}
-            <polygon points="28,44 32,16 36,44" fill="#070d18" opacity="0.65" />
-          </g>
+        {/* Tablet: Right-center balanced position at x: 920 */}
+        <CampsiteVignette className="hidden sm:block lg:hidden" transform="translate(920, 242)" />
 
-          {/* ── CRACKLING CAMPFIRE HEARTH ── */}
-          <g transform="translate(90, 36)">
-            {/* Hearth Stones */}
-            <ellipse cx="14" cy="18" rx="14" ry="5" fill="#010307" />
-            {/* Campfire Flame Glow */}
-            <circle cx="14" cy="14" r="28" fill="url(#fire-glow)" opacity="0.8" className="ch-glow" />
-            {/* Flame Shapes */}
-            <path
-              d="M10 18 Q14 2 14 6 Q14 2 18 18 Q14 12 10 18 Z"
-              fill="#fbbf24"
-              className="ch-glow"
-            />
-            <path
-              d="M12 18 Q14 8 15 11 Q15 8 16 18 Z"
-              fill="#fff7ed"
-            />
-            {/* Floating Campfire Embers */}
-            <circle cx="12" cy="6" r="1.2" fill="#fb923c" opacity="0.85" className="animate-ping" style={{ animationDuration: '2.5s' }} />
-            <circle cx="16" cy="1" r="1" fill="#ea580c" opacity="0.9" className="animate-pulse" />
-            <circle cx="13" cy="-5" r="0.8" fill="#fbbf24" opacity="0.75" />
-          </g>
-        </g>
+        {/* Desktop: Panoramic right-shoulder position at x: 1080 */}
+        <CampsiteVignette className="hidden lg:block" transform="translate(1080, 240)" />
       </svg>
     </div>
   );
