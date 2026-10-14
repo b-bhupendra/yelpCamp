@@ -1,71 +1,102 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Icon from './Icons';
 import ScrollReveal from './ScrollReveal';
 
 /**
- * CAMPSITE BENTO — a guided grid of campsites that emerges as you scroll.
+ * CAMPSITE BENTO — Guided showcase of campsites with category filtering.
+ * UI/UX Pro Max Edition
  *
- * Every card starts faded (dim, desaturated, blurred and nudged down) and
- * blooms into full colour as it enters the viewport, staggered so the grid
- * resolves progressively rather than all at once.
- *
- * The reveal is driven by one rAF-throttled scroll listener that measures each
- * card against the viewport — deterministic and reliable, and it never leaves
- * a card stranded in the faded state. Motion is opt-out: under
- * prefers-reduced-motion the cards simply appear.
+ * Features:
+ *   - Category quick-filter tabs (All, Riverside, Ridge & Alpine, Dark Sky, Forest)
+ *   - Glassmorphic card design with subtle aurora borders
+ *   - Star rating, night price, and terrain indicators
+ *   - Staggered emergence as the user scrolls into view
  */
 
 const CAMPSITES = [
   {
-    name: 'Fern Hollow',
+    id: 1,
+    name: 'Fern Hollow Sanctuary',
     location: 'Olympic Peninsula, WA',
+    category: 'Riverside',
     price: 42,
-    tag: 'Riverside',
+    rating: 4.94,
+    reviews: 128,
+    elevation: '420m',
+    tag: 'Riverside Pitch',
     img: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=1000&q=80',
     span: 'md:col-span-2 md:row-span-2',
+    featured: true,
   },
   {
-    name: 'Ridgeline Camp',
+    id: 2,
+    name: 'Ridgeline Cloud Camp',
     location: 'Dolomites, Italy',
+    category: 'Ridge & Alpine',
     price: 58,
-    tag: 'Ridge views',
+    rating: 4.98,
+    reviews: 94,
+    elevation: '2,140m',
+    tag: 'Ridge Panorama',
     img: 'https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?auto=format&fit=crop&w=1000&q=80',
     span: 'md:col-span-2 md:row-span-1',
   },
   {
-    name: 'Pinewatch',
+    id: 3,
+    name: 'Pinewatch Forest Camp',
     location: 'Black Forest, Germany',
+    category: 'Forest',
     price: 35,
-    tag: 'Forest',
+    rating: 4.88,
+    reviews: 62,
+    elevation: '850m',
+    tag: 'Deep Woods',
     img: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80',
     span: 'md:col-span-1 md:row-span-1',
   },
   {
-    name: 'Ember Flats',
+    id: 4,
+    name: 'Ember Flats Dark-Sky',
     location: 'Joshua Tree, CA',
+    category: 'Dark Sky',
     price: 29,
-    tag: 'Desert sky',
+    rating: 4.92,
+    reviews: 146,
+    elevation: '980m',
+    tag: 'Bortle Class 1',
     img: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=800&q=80',
     span: 'md:col-span-1 md:row-span-1',
   },
   {
-    name: 'Lakeside Pitch',
-    location: 'Banff, Canada',
+    id: 5,
+    name: 'Lakeside Mirror Pitch',
+    location: 'Banff National Park, Canada',
+    category: 'Riverside',
     price: 64,
-    tag: 'Lakeside',
+    rating: 4.97,
+    reviews: 215,
+    elevation: '1,380m',
+    tag: 'Alpine Lake',
     img: 'https://images.unsplash.com/photo-1454391304352-2bf4678b1a7a?auto=format&fit=crop&w=1000&q=80',
     span: 'md:col-span-2 md:row-span-1',
   },
   {
-    name: 'Moss Bank',
+    id: 6,
+    name: 'Moss Bank Glade',
     location: 'Snowdonia, Wales',
+    category: 'Forest',
     price: 38,
-    tag: 'Valley',
+    rating: 4.89,
+    reviews: 77,
+    elevation: '310m',
+    tag: 'Valley Clearing',
     img: 'https://images.unsplash.com/photo-1533873984035-25970ab07461?auto=format&fit=crop&w=1000&q=80',
     span: 'md:col-span-2 md:row-span-1',
   },
 ];
+
+const CATEGORIES = ['All', 'Riverside', 'Ridge & Alpine', 'Dark Sky', 'Forest'];
 
 function CampsiteCard({ camp, delay, visible, cardRef }) {
   return (
@@ -73,39 +104,51 @@ function CampsiteCard({ camp, delay, visible, cardRef }) {
       ref={cardRef}
       to="/index"
       style={{ transitionDelay: `${delay}ms` }}
-      className={`bento-emerge group relative block aspect-[4/3] overflow-hidden rounded-2xl border border-border md:aspect-auto ${camp.span} ${
+      className={`bento-emerge group relative block aspect-[4/3] overflow-hidden rounded-3xl border border-border/80 bg-surface/60 backdrop-blur-md md:aspect-auto ${camp.span} ${
         visible ? 'is-visible' : ''
-      }`}
+      } hover:border-secondary/50 hover:shadow-[0_15px_50px_-15px_rgba(14,165,233,0.35)] transition-all duration-500`}
     >
-      {/* image + fallback wash */}
-      <div className="absolute inset-0 bg-gradient-to-br from-ink-800 to-ink-950">
+      {/* Background image & gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-ink-900 to-ink-950 overflow-hidden">
         <img
           src={camp.img}
           alt={`${camp.name} campsite`}
           loading="lazy"
           onError={(e) => { e.currentTarget.style.opacity = '0'; }}
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+          className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-108"
         />
       </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/25 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/35 to-transparent opacity-90 group-hover:opacity-80 transition-opacity duration-300" />
 
-      {/* tag */}
-      <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full border border-border bg-background/55 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-secondary backdrop-blur-sm">
-        <Icon.MapPin size={12} />
-        {camp.tag}
-      </span>
+      {/* Top badges: Tag + Rating */}
+      <div className="absolute left-4 right-4 top-4 flex items-center justify-between gap-2 z-10">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/20 bg-background/70 px-3.5 py-1 text-[11px] font-semibold tracking-wide text-secondary backdrop-blur-md shadow-sm">
+          <Icon.MapPin size={12} className="text-secondary" />
+          {camp.tag}
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-background/70 px-2.5 py-1 text-[11px] font-bold text-fg backdrop-blur-md">
+          <Icon.Star size={11} className="text-amber-400 fill-amber-400" />
+          {camp.rating}
+        </span>
+      </div>
 
-      {/* caption */}
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-5">
+      {/* Bottom info section */}
+      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-5 md:p-6 z-10">
         <div className="min-w-0">
-          <h3 className="truncate font-display text-lg font-bold tracking-tight text-fg md:text-xl">
+          <div className="flex items-center gap-2 text-[11px] font-medium text-fg-subtle mb-1">
+            <span>{camp.location}</span>
+            <span>•</span>
+            <span className="text-secondary">{camp.elevation}</span>
+          </div>
+          <h3 className="truncate font-display text-lg font-bold tracking-tight text-fg md:text-xl group-hover:text-secondary transition-colors duration-200">
             {camp.name}
           </h3>
-          <p className="truncate text-xs text-fg-muted">{camp.location}</p>
         </div>
         <div className="shrink-0 text-right">
-          <span className="font-black tracking-tight text-fg">${camp.price}</span>
-          <span className="block text-xs text-fg-subtle">/night</span>
+          <div className="font-display text-lg font-black tracking-tight text-fg">
+            ${camp.price}
+          </div>
+          <span className="block text-[11px] font-medium text-fg-subtle">/ night</span>
         </div>
       </div>
     </Link>
@@ -113,10 +156,15 @@ function CampsiteCard({ camp, delay, visible, cardRef }) {
 }
 
 export default function CampsiteBento() {
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [visible, setVisible] = useState(() => CAMPSITES.map(() => false));
   const refs = useRef([]);
-
   const visibleRef = useRef(visible);
+
+  const filteredCampsites = useMemo(() => {
+    if (selectedCategory === 'All') return CAMPSITES;
+    return CAMPSITES.filter((c) => c.category === selectedCategory);
+  }, [selectedCategory]);
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -126,12 +174,9 @@ export default function CampsiteBento() {
       return;
     }
 
-    // Poll geometry on the animation frame loop rather than relying on scroll
-    // events (which the smooth-scroll library does not fire continuously), so
-    // every card reliably emerges. Stops as soon as all cards are visible.
     let raf = 0;
     let frames = 0;
-    const MAX_FRAMES = 3600; // ~60s safety cap
+    const MAX_FRAMES = 3600;
 
     const tick = () => {
       frames += 1;
@@ -142,7 +187,7 @@ export default function CampsiteBento() {
       refs.current.forEach((el, i) => {
         if (cur[i] || !el) return;
         const r = el.getBoundingClientRect();
-        if (r.top < vh * 0.92 && r.bottom > 0) {
+        if (r.top < vh * 0.94 && r.bottom > 0) {
           cur[i] = true;
           changed = true;
         }
@@ -162,46 +207,66 @@ export default function CampsiteBento() {
   }, []);
 
   return (
-    <section className="relative z-10 mx-auto max-w-7xl px-6 pt-20 pb-24 md:pt-28 md:pb-32">
-      {/* Heading */}
+    <section className="relative z-10 mx-auto max-w-7xl px-6 pt-20 pb-24 md:pt-32 md:pb-36">
+      {/* Header with Title & Quick Info */}
       <ScrollReveal variant="fade-up" delay={50}>
         <div className="mb-10 flex flex-col gap-6 md:mb-14 md:flex-row md:items-end md:justify-between">
           <div className="max-w-xl">
-            <p className="mb-4 text-xs font-bold uppercase tracking-[0.3em] text-secondary">
-              Curated campsites
-            </p>
+            <span className="inline-flex items-center gap-2 px-3 py-1 mb-3 rounded-full border border-sky-400/20 bg-surface/80 text-[11px] font-bold uppercase tracking-[0.25em] text-secondary">
+              Handpicked Wild Stays
+            </span>
             <h2 className="font-display text-3xl font-black leading-[1.02] tracking-tight text-fg md:text-5xl">
               Places worth pitching <br />
-              <span className="aurora-text">a tent.</span>
+              <span className="aurora-text">a backcountry tent.</span>
             </h2>
           </div>
           <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-fg-subtle">
-            <Icon.ArrowDown size={15} className="animate-bounce" />
+            <Icon.ArrowDown size={15} className="animate-bounce text-secondary" />
             Scroll to wander
           </p>
         </div>
       </ScrollReveal>
 
-      {/* Bento grid */}
-      <div className="grid grid-cols-1 gap-5 md:auto-rows-[200px] md:grid-cols-4">
-        {CAMPSITES.map((camp, i) => (
+      {/* Category Filter Pills */}
+      <ScrollReveal variant="fade-up" delay={100}>
+        <div className="flex items-center gap-2.5 overflow-x-auto pb-4 mb-8 no-scrollbar">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`cursor-pointer px-5 py-2.5 rounded-full text-xs font-bold tracking-wider transition-all duration-200 whitespace-nowrap ${
+                selectedCategory === cat
+                  ? 'bg-secondary text-background shadow-[0_0_20px_rgba(56,189,248,0.4)]'
+                  : 'border border-border/80 bg-surface/50 text-fg-muted hover:text-fg hover:border-border-strong'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </ScrollReveal>
+
+      {/* Bento Grid */}
+      <div className="grid grid-cols-1 gap-5 md:auto-rows-[220px] md:grid-cols-4">
+        {filteredCampsites.map((camp, i) => (
           <CampsiteCard
             key={camp.name}
             camp={camp}
-            delay={i * 90}
+            delay={i * 80}
             visible={visible[i]}
             cardRef={(el) => { refs.current[i] = el; }}
           />
         ))}
       </div>
 
+      {/* Bottom CTA */}
       <ScrollReveal variant="fade-scale" delay={150}>
-        <div className="mt-12 flex justify-center">
+        <div className="mt-14 flex justify-center">
           <Link
             to="/index"
-            className="inline-flex cursor-pointer items-center gap-2.5 rounded-full border border-border-strong px-8 py-4 text-xs font-bold uppercase tracking-[0.18em] text-fg transition-all duration-300 hover:border-secondary hover:bg-surface-2 hover:shadow-[0_0_25px_rgba(56,189,248,0.2)]"
+            className="inline-flex cursor-pointer items-center gap-2.5 rounded-full border border-border-strong bg-surface/60 px-9 py-4 text-xs font-bold uppercase tracking-[0.2em] text-fg transition-all duration-300 hover:border-secondary hover:bg-surface-2 hover:shadow-[0_0_30px_rgba(56,189,248,0.25)]"
           >
-            See all campsites
+            Explore all {CAMPSITES.length}+ campsites
             <Icon.ArrowRight size={16} />
           </Link>
         </div>

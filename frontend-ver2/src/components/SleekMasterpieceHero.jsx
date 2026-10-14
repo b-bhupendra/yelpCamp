@@ -84,53 +84,31 @@ export default function SleekMasterpieceHero() {
       onMouseMove={handleMouseMove}
       className="relative w-full h-[120vh] overflow-hidden"
     >
-      {/* ── ATMOSPHERIC CAMPSITE HINT LAYER (blurred, faded, ambient glow) ── */}
+      {/* ── AURORA LIGHT SPILL & AMBIENT HEARTH GLOW (Allowing procedural aurora to shine) ── */}
       <div 
         className="pointer-events-none absolute inset-0 z-[4] overflow-hidden select-none"
         aria-hidden="true"
       >
-        {/* Softly blurred campsite backdrop with subtle parallax response */}
-        <motion.div 
-          style={reduced ? undefined : {
-            y: useTransform(smoothProgress, [0, 1], [0, 140]),
-            opacity: useTransform(smoothProgress, [0, 0.7], [0.85, 0.2]),
-          }}
-          className="absolute inset-0 w-full h-full"
-        >
-          <div
-            className="absolute inset-0 w-full h-full bg-center bg-cover transition-transform duration-700 ease-out"
-            style={{
-              backgroundImage: 'url(/images/campsite-hero.jpg)',
-              filter: 'blur(3px) brightness(0.62) saturate(1.28)',
-              transform: reduced 
-                ? 'scale(1.04)' 
-                : `scale(1.08) translate3d(${mousePosition.x * -16}px, ${mousePosition.y * -16}px, 0)`,
-              maskImage: 'radial-gradient(ellipse 95% 82% at 50% 52%, black 42%, rgba(0,0,0,0.6) 72%, transparent 98%)',
-              WebkitMaskImage: 'radial-gradient(ellipse 95% 82% at 50% 52%, black 42%, rgba(0,0,0,0.6) 72%, transparent 98%)',
-            }}
-          />
-        </motion.div>
-
-        {/* Campfire warmth & ember hearth illumination */}
+        {/* Upper Aurora Luminous Bloom */}
         <div 
-          className="absolute bottom-[24%] left-1/2 -translate-x-1/2 w-[70vw] max-w-[750px] h-[360px] rounded-full pointer-events-none ch-glow"
+          className="absolute top-[8%] left-1/2 -translate-x-1/2 w-[85vw] max-w-[1100px] h-[480px] rounded-full pointer-events-none"
           style={{
-            background: 'radial-gradient(circle, rgba(234, 88, 12, 0.32) 0%, rgba(251, 146, 60, 0.14) 42%, transparent 72%)',
-            filter: 'blur(55px)',
-          }}
-        />
-
-        {/* Northern lights aurora haze overlay */}
-        <div 
-          className="absolute top-[6%] left-1/2 -translate-x-1/2 w-[88vw] max-w-[1100px] h-[440px] rounded-full pointer-events-none"
-          style={{
-            background: 'radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, rgba(14, 165, 233, 0.10) 48%, transparent 75%)',
+            background: 'radial-gradient(circle, rgba(16, 185, 129, 0.16) 0%, rgba(56, 189, 248, 0.22) 35%, rgba(129, 140, 248, 0.12) 65%, transparent 80%)',
             filter: 'blur(75px)',
           }}
         />
 
-        {/* Cinematic subtle vignette gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-transparent to-background/85" />
+        {/* Campfire warmth & ember hearth reflection from horizon */}
+        <div 
+          className="absolute bottom-[22%] left-1/2 -translate-x-1/2 w-[70vw] max-w-[750px] h-[340px] rounded-full pointer-events-none ch-glow"
+          style={{
+            background: 'radial-gradient(circle, rgba(234, 88, 12, 0.24) 0%, rgba(251, 146, 60, 0.10) 45%, transparent 72%)',
+            filter: 'blur(60px)',
+          }}
+        />
+
+        {/* Soft twilight gradient framing */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-transparent to-background/85" />
       </div>
 
       {/* LAYER 1: hardware-accelerated canvas */}
@@ -142,19 +120,20 @@ export default function SleekMasterpieceHero() {
           dpr={[1, 2]}
           frameloop={reduced ? 'demand' : 'always'}
         >
-          <ambientLight intensity={0.14} />
-          {/* Aurora key + warm rim light */}
-          <directionalLight position={[4, 5, 3]} intensity={0.6} color="#38bdf8" />
-          <directionalLight position={[-5, -2, -4]} intensity={0.5} color="#ea580c" />
+          <ambientLight intensity={0.16} />
+          {/* Aurora key (cyan & emerald) + warm campfire rim light */}
+          <directionalLight position={[4, 5, 3]} intensity={0.65} color="#38bdf8" />
+          <directionalLight position={[-4, 4, 2]} intensity={0.5} color="#10b981" />
+          <directionalLight position={[-5, -2, -4]} intensity={0.55} color="#ea580c" />
 
-          {/* Self-contained image-based lighting — no remote HDRI fetch,
-              so the hero renders offline and behind strict networks. */}
+          {/* Aurora + campfire image-based lighting environment */}
           <Environment resolution={256}>
-            <Lightformer intensity={1.6} position={[0, 6, -9]} scale={[10, 10, 1]} color="#38bdf8" />
+            <Lightformer intensity={1.8} position={[0, 6, -9]} scale={[10, 10, 1]} color="#38bdf8" />
+            <Lightformer intensity={1.4} position={[-5, 5, -5]} scale={[8, 8, 1]} color="#10b981" />
             <Lightformer intensity={1.2} position={[-6, 1, -2]} scale={[10, 10, 1]} color="#ea580c" />
             <Lightformer intensity={0.8} position={[6, 1, -2]} scale={[10, 10, 1]} color="#67e8f9" />
-            <Lightformer intensity={0.5} position={[0, -5, 2]} scale={[10, 10, 1]} color="#0ea5e9" />
-            <Lightformer intensity={0.22} position={[0, 2, 6]} scale={[8, 8, 1]} color="#ffffff" />
+            <Lightformer intensity={0.6} position={[0, -5, 2]} scale={[10, 10, 1]} color="#0ea5e9" />
+            <Lightformer intensity={0.25} position={[0, 2, 6]} scale={[8, 8, 1]} color="#ffffff" />
           </Environment>
 
           {/* Warm cross-light from the campfire below — cinematic blue/amber contrast */}

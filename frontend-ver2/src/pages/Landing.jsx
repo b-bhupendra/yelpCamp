@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import AmbientAtmosphere from '../components/AmbientAtmosphere';
 import SleekMasterpieceHero from '../components/SleekMasterpieceHero';
 import CampHorizon from '../components/CampHorizon';
 import CampsiteBento from '../components/CampsiteBento';
+import CamperStories from '../components/CamperStories';
 import ScrollReveal from '../components/ScrollReveal';
 import Magnetic from '../components/Magnetic';
 import Icon from '../components/Icons';
@@ -47,75 +48,76 @@ function ParallaxWrapper({ speed = 0.5, children, className = "" }) {
   );
 }
 
-/* Campsite features shown on the first screen */
+/* Campsite quick feature tags */
 const HERO_FEATURES = [
-  { Icon: Icon.Moon, label: 'Dark-sky sites' },
-  { Icon: Icon.Droplet, label: 'Riverside pitches' },
-  { Icon: Icon.Flame, label: 'Fire pits' },
-  { Icon: Icon.Tree, label: 'Forest clearings' },
-  { Icon: Icon.Tent, label: 'Tent & RV' },
+  { Icon: Icon.Moon, label: 'Dark-Sky Class 1' },
+  { Icon: Icon.Droplet, label: 'Riverside Pitches' },
+  { Icon: Icon.Flame, label: 'Fire Pit Safe' },
+  { Icon: Icon.Tree, label: 'Forest Clearings' },
+  { Icon: Icon.Tent, label: 'Tent & RV Access' },
 ];
 
-/* Core Wilderness Pillars (UI/UX Pro Max Section) */
+/* Core Wilderness Telemetry Pillars */
 const WILDERNESS_PILLARS = [
   {
     icon: Icon.MapPin,
-    title: 'Verified GPS & Topography',
-    description: 'Every site is pinned with high-precision offline coordinates, elevation profiles, sun angles, and water availability.',
+    title: 'Precision GPS & Topography',
+    description: 'Every site is mapped with offline coordinates, elevation profiles, sun paths, tree canopy density, and nearest water sources.',
     badge: 'Offline GPX',
   },
   {
     icon: Icon.Flame,
     title: 'Live Ranger & Fire Telemetry',
-    description: 'Direct data feeds for county burn bans, active fire restrictions, high-wind advisories, and wildlife notices.',
-    badge: 'Real-time Feeds',
+    description: 'Direct integrations with park authorities provide active burn-ban alerts, wind forecasts, and seasonal wildlife notices.',
+    badge: 'Real-Time Feeds',
   },
   {
     icon: Icon.Moon,
     title: 'Bortle Dark-Sky Mapping',
-    description: 'Find zero light-pollution sanctuaries verified with Bortle scale ratings and astronomical visibility metrics.',
+    description: 'Explore verified low-pollution night skies with Bortle scale indicators, meteor shower visibility, and Milky Way calendars.',
     badge: 'Class 1-3 Skies',
   },
 ];
 
-/* Community Explorer Metrics */
+/* Community Explorer Telemetry */
 const COMMUNITY_METRICS = [
-  { value: '1,420+', label: 'Curated Campsites', detail: 'Across North America & Europe' },
-  { value: '48.5K', label: 'Nights Logged', detail: 'By verified backcountry campers' },
-  { value: '99.6%', label: 'Topography Accuracy', detail: 'Field verified by local rangers' },
-  { value: '4.95 / 5', label: 'Camper Rating', detail: 'From over 12,000 genuine reviews' },
+  { value: '1,420+', label: 'Curated Campsites', detail: 'North America & Europe' },
+  { value: '48.5K', label: 'Nights Logged', detail: 'By verified hikers' },
+  { value: '99.6%', label: 'Terrain Accuracy', detail: 'Ranger field-verified' },
+  { value: '4.95 / 5', label: 'Camper Rating', detail: 'Over 12,000 reviews' },
 ];
 
 export default function Landing() {
   return (
     <div className="bg-background text-fg selection:bg-secondary/30 font-sans min-h-screen">
 
-      {/* ── AMBIENT ATMOSPHERE LAYER (starry sky + aurora) ── */}
+      {/* ── PROCEDURAL AURORA BOREALIS & STARFIELD CANVAS LAYER ── */}
       <div className="fixed inset-0 z-0 pointer-events-none" aria-hidden="true">
         <AmbientAtmosphere />
       </div>
 
       {/* ═══════════════════════════════════════
-          SECTION 1 — HERO WITH VISIBLE CAMPSITE HINT & BLUR
+          SECTION 1 — HERO SECTION
+          Aurora sky + 3D Liquid Chrome Centerpiece + Campsite Horizon
           ═══════════════════════════════════════ */}
       <section className="relative h-screen flex flex-col justify-end overflow-hidden pb-[18vh] md:pb-[16vh]">
-        {/* Camp horizon silhouette at the foot of the screen */}
+        {/* Camp Horizon Silhouette with glowing tent and campfire */}
         <div className="absolute inset-x-0 bottom-0 z-[5] h-[38%] pointer-events-none" aria-hidden="true">
           <CampHorizon />
         </div>
 
-        {/* 3D globe + atmospheric campsite backdrop */}
+        {/* 3D Liquid-Chrome Centerpiece illuminated by the Aurora */}
         <div className="absolute inset-0 z-10">
           <SleekMasterpieceHero />
         </div>
 
-        {/* Campsite features + CTA — Revealed on load with staggered animation */}
+        {/* Hero Quick Tags & Magnetic CTA Button */}
         <div className="relative z-50 flex flex-col items-center gap-6 px-6">
           <ScrollReveal variant="fade-up" delay={200} duration={700}>
             <ul className="flex flex-wrap items-center justify-center gap-2.5 max-w-3xl">
-              {HERO_FEATURES.map((f, idx) => (
+              {HERO_FEATURES.map((f) => (
                 <li key={f.label}>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/65 backdrop-blur-md px-4 py-2 text-xs font-medium text-fg-muted shadow-sm hover:border-secondary/40 hover:text-fg transition-colors duration-200">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-background/70 backdrop-blur-md px-4 py-2 text-xs font-medium text-fg-muted shadow-sm hover:border-secondary/40 hover:text-fg transition-colors duration-200">
                     <f.Icon size={14} className="text-secondary" />
                     {f.label}
                   </span>
@@ -126,28 +128,39 @@ export default function Landing() {
 
           <ScrollReveal variant="fade-scale" delay={350} duration={800}>
             <div className="flex flex-col sm:flex-row items-center gap-4">
-              <Link
-                to="/index"
-                className="group relative cursor-pointer px-12 py-5 rounded-full font-bold text-xs uppercase tracking-[0.24em] text-on-primary bg-primary overflow-hidden transition-all duration-300 hover:scale-[1.04] active:scale-95 shadow-[0_0_35px_rgba(14,165,233,0.35)] hover:shadow-[0_0_50px_rgba(14,165,233,0.55)]"
-              >
-                <span className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                <span className="relative inline-flex items-center gap-2.5">
-                  Explore campsites
-                  <Icon.ArrowRight size={16} className="transition-transform duration-200 group-hover:translate-x-1" />
-                </span>
-              </Link>
+              <Magnetic strength={0.25}>
+                <Link
+                  to="/index"
+                  className="group relative cursor-pointer px-12 py-5 rounded-full font-bold text-xs uppercase tracking-[0.24em] text-on-primary bg-primary overflow-hidden transition-all duration-300 hover:scale-[1.04] active:scale-95 shadow-[0_0_35px_rgba(14,165,233,0.35)] hover:shadow-[0_0_55px_rgba(14,165,233,0.6)]"
+                >
+                  <span className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                  <span className="relative inline-flex items-center gap-2.5">
+                    Explore campsites
+                    <Icon.ArrowRight size={16} className="transition-transform duration-200 group-hover:translate-x-1" />
+                  </span>
+                </Link>
+              </Magnetic>
+
+              <Magnetic strength={0.15}>
+                <Link
+                  to="/register"
+                  className="inline-flex cursor-pointer items-center gap-2 px-8 py-5 rounded-full border border-border-strong hover:border-secondary text-xs font-bold uppercase tracking-[0.2em] text-fg transition-all duration-300 hover:bg-surface/60 backdrop-blur-md"
+                >
+                  Join Community
+                </Link>
+              </Magnetic>
             </div>
           </ScrollReveal>
         </div>
       </section>
 
       {/* ═══════════════════════════════════════
-          SECTION 2 — GUIDED CAMPSITE BENTO (emerges on scroll)
+          SECTION 2 — GUIDED CAMPSITE BENTO (WITH FILTERS)
           ═══════════════════════════════════════ */}
       <CampsiteBento />
 
       {/* ═══════════════════════════════════════
-          SECTION 2.5 — WILDERNESS STANDARD PILLARS (SCROLL REVEAL)
+          SECTION 3 — WILDERNESS TELEMETRY PILLARS
           ═══════════════════════════════════════ */}
       <section className="relative z-10 mx-auto max-w-7xl px-6 py-20 md:py-32">
         <ScrollReveal variant="fade-up" delay={50}>
@@ -190,7 +203,7 @@ export default function Landing() {
               </div>
 
               <div className="mt-8 pt-4 border-t border-border/60 flex items-center justify-between text-xs font-semibold text-secondary">
-                <span>View specification</span>
+                <span>View telemetry spec</span>
                 <Icon.ArrowRight size={14} className="group-hover:translate-x-1.5 transition-transform duration-200" />
               </div>
             </ScrollReveal>
@@ -199,7 +212,7 @@ export default function Landing() {
       </section>
 
       {/* ═══════════════════════════════════════
-          SECTION 2.8 — COMMUNITY METRICS (SCROLL REVEAL)
+          SECTION 4 — COMMUNITY TELEMETRY COUNTER
           ═══════════════════════════════════════ */}
       <section className="relative z-10 border-y border-border/60 bg-surface/40 backdrop-blur-md py-16 px-6">
         <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
@@ -225,19 +238,24 @@ export default function Landing() {
       </section>
 
       {/* ═══════════════════════════════════════
-          SECTION 3 — STATEMENT (SCROLL REVEAL)
+          SECTION 5 — CAMPER TESTIMONIALS
+          ═══════════════════════════════════════ */}
+      <CamperStories />
+
+      {/* ═══════════════════════════════════════
+          SECTION 6 — STATEMENT BANNER
           ═══════════════════════════════════════ */}
       <section className="relative py-36 md:py-56 px-6 overflow-hidden z-10">
         <ParallaxWrapper speed={0.08} className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.035]">
           <span className="text-[28vw] font-display font-black whitespace-nowrap select-none">EXPLORE</span>
         </ParallaxWrapper>
 
-        {/* Ambient warm campfire glow in statement center */}
+        {/* Ambient warm campfire reflection */}
         <div 
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] rounded-full pointer-events-none"
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[320px] rounded-full pointer-events-none"
           style={{
-            background: 'radial-gradient(circle, rgba(234, 88, 12, 0.12) 0%, rgba(56, 189, 248, 0.08) 50%, transparent 75%)',
-            filter: 'blur(70px)',
+            background: 'radial-gradient(circle, rgba(234, 88, 12, 0.14) 0%, rgba(56, 189, 248, 0.08) 50%, transparent 75%)',
+            filter: 'blur(75px)',
           }}
           aria-hidden="true"
         />
@@ -255,17 +273,17 @@ export default function Landing() {
       </section>
 
       {/* ═══════════════════════════════════════
-          SECTION 4 — FINAL GATEWAY (SCROLL REVEAL)
+          SECTION 7 — FINAL GATEWAY CTA
           ═══════════════════════════════════════ */}
       <section className="relative py-24 md:py-36 px-6 z-10">
         <ScrollReveal variant="fade-scale" duration={850}>
           <div className="max-w-4xl mx-auto aurora-border rounded-3xl p-10 md:p-20 text-center relative overflow-hidden group shadow-[0_20px_80px_-20px_rgba(5,10,20,0.9)]">
             {/* Ambient interior light */}
             <div 
-              className="absolute -top-32 left-1/2 -translate-x-1/2 w-[400px] h-[250px] rounded-full pointer-events-none"
+              className="absolute -top-32 left-1/2 -translate-x-1/2 w-[420px] h-[260px] rounded-full pointer-events-none"
               style={{
-                background: 'radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, transparent 70%)',
-                filter: 'blur(50px)',
+                background: 'radial-gradient(circle, rgba(56, 189, 248, 0.28) 0%, rgba(16, 185, 129, 0.15) 45%, transparent 72%)',
+                filter: 'blur(55px)',
               }}
               aria-hidden="true"
             />
@@ -287,7 +305,7 @@ export default function Landing() {
                     to="/register"
                     className="cursor-pointer inline-flex items-center gap-2.5 px-10 py-5 bg-primary text-on-primary rounded-full font-bold text-xs uppercase tracking-[0.2em] transition-all duration-300 hover:scale-[1.04] active:scale-95 shadow-[0_0_30px_rgba(14,165,233,0.35)]"
                   >
-                    Create account
+                    Create free account
                     <Icon.ArrowRight size={15} />
                   </Link>
                 </Magnetic>
@@ -296,7 +314,7 @@ export default function Landing() {
                     to="/index"
                     className="cursor-pointer inline-flex items-center gap-2.5 px-10 py-5 border border-border-strong hover:border-secondary text-fg rounded-full font-bold text-xs uppercase tracking-[0.2em] transition-all duration-200 hover:bg-surface-2"
                   >
-                    Browse gallery
+                    Browse all campsites
                   </Link>
                 </Magnetic>
               </div>
@@ -306,17 +324,27 @@ export default function Landing() {
       </section>
 
       {/* ═══════════════════════════════════════
-          FOOTER (SCROLL REVEAL)
+          SECTION 8 — FOOTER
           ═══════════════════════════════════════ */}
-      <footer className="relative py-16 text-center border-t border-border/60 z-10 bg-background/70 backdrop-blur-sm">
+      <footer className="relative py-16 text-center border-t border-border/60 z-10 bg-background/80 backdrop-blur-md">
         <ScrollReveal variant="fade-in" delay={100}>
           <div className="flex items-center justify-center gap-2 mb-3 text-secondary">
             <Icon.Flame size={18} />
             <span className="font-display font-bold tracking-wider text-xs uppercase text-fg">YelpCamp Wilderness</span>
           </div>
-          <p className="text-xs font-semibold tracking-[0.28em] text-fg-subtle uppercase">
+          <p className="text-xs font-semibold tracking-[0.28em] text-fg-subtle uppercase mb-4">
             Crafted for people who sleep under the stars
           </p>
+          <div className="flex items-center justify-center gap-6 text-xs text-fg-muted">
+            <Link to="/index" className="hover:text-fg transition-colors">Explore</Link>
+            <Link to="/login" className="hover:text-fg transition-colors">Sign in</Link>
+            <Link to="/register" className="hover:text-fg transition-colors">Register</Link>
+            <span className="text-fg-subtle">•</span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              All Systems Operational
+            </span>
+          </div>
         </ScrollReveal>
       </footer>
     </div>
