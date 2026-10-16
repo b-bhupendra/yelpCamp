@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import api from '../api';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import AmbientAtmosphere from '../components/AmbientAtmosphere';
 import Magnetic from '../components/Magnetic';
 import Icon from '../components/Icons';
+import StoryBar from '../components/stories/StoryBar';
+import useCampgrounds from '../hooks/useCampgrounds';
+import CampgroundGridSkeleton from '../components/skeletons/CampgroundCardSkeleton';
+
 
 /* ───────────────────────────────────────────
    3D TILT CARD — fine-pointer + motion-safe only
@@ -66,25 +69,7 @@ function TiltCard({ children, className = "" }) {
 }
 
 export default function CampgroundList() {
-  const [campgrounds, setCampgrounds] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-
-  const fetchCampgrounds = useCallback(async () => {
-    try {
-      const res = await api.get(`/index/?search=${search}`);
-      setCampgrounds(res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [search]);
-
-  useEffect(() => {
-    const timer = setTimeout(fetchCampgrounds, 300);
-    return () => clearTimeout(timer);
-  }, [fetchCampgrounds]);
+  const { campgrounds, loading, error, search, setSearch, total, refetch } = useCampgrounds();
 
   return (
     <div className="min-h-screen relative bg-background">
@@ -136,8 +121,23 @@ export default function CampgroundList() {
           </div>
         </div>
 
+        {/* Community Story Bar */}
+        <div className="mb-12 glass-obsidian rounded-3xl p-5 sm:p-6 border border-border/70 relative shadow-2xl">
+          <div className="flex items-center justify-between mb-3 px-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <h2 className="font-display font-bold text-xs sm:text-sm uppercase tracking-wider text-fg">
+                Trail Highlights & Moments
+              </h2>
+            </div>
+            <span className="text-[11px] text-fg-subtle">Shared by verified backcountry campers</span>
+          </div>
+          <StoryBar />
+        </div>
+
         {/* Action Bar */}
         <div className="mb-12 flex justify-end">
+
           <Magnetic strength={0.2}>
             <Link
               to="/campgrounds/new"
@@ -149,10 +149,22 @@ export default function CampgroundList() {
           </Magnetic>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-40">
-            <div className="w-12 h-12 border-2 border-border border-t-secondary rounded-full animate-spin" role="status" aria-label="Loading campsites" />
+        {/* Error State */}
+        {error && (
+          <div className="mb-8 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between text-xs text-rose-300">
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 font-semibold cursor-pointer text-white"
+            >
+              Retry
+            </button>
           </div>
+        )}
+
+        {loading ? (
+          <CampgroundGridSkeleton count={8} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 md:gap-8">
             {campgrounds.map((camp) => {
@@ -167,7 +179,7 @@ export default function CampgroundList() {
                     <div className="relative aspect-[4/5] overflow-hidden">
                       <img
                         src={camp.image || "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&q=80&w=600"}
-                        alt={camp.name}
+                        alt={camp.title || camp.name || "Campsite"}
                         loading="lazy"
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                       />
@@ -180,7 +192,7 @@ export default function CampgroundList() {
                               <Icon.MapPin size={13} /> Verified
                             </p>
                             <h3 className="text-xl font-display font-bold text-fg leading-tight tracking-tight truncate">
-                              {camp.name}
+                              {camp.title || camp.name}
                             </h3>
                           </div>
                           <div className="text-right shrink-0">

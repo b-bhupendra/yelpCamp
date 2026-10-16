@@ -59,7 +59,7 @@ export default function GoogleSignInButton({ text = "continue_with" }) {
     setError('');
     try {
       await loginWithGoogle(response.credential);
-      navigate('/index');
+      navigate('/campgrounds');
     } catch (err) {
       console.error('Google login error:', err);
       const detail = err.response?.data?.detail || err.message || 'Google authentication failed';

@@ -69,3 +69,20 @@ def get_user_avatar_url(username: str, avatar_url: str = None) -> str:
         return avatar_url
     clean_username = (username or "scout").lower().replace(" ", "_")
     return f"https://api.dicebear.com/7.x/adventurer/svg?seed={clean_username}"
+
+def upload_visitor_photo(file_data, public_id: str = None) -> str:
+    """
+    Uploads a visitor story/photo to Cloudinary in the 'yelpcamp/visitor_photos' folder.
+    """
+    options = {
+        "folder": "yelpcamp/visitor_photos",
+        "resource_type": "auto",
+        "transformation": [
+            {"quality": "auto", "fetch_format": "auto"}
+        ]
+    }
+    if public_id:
+        options["public_id"] = public_id
+
+    result = cloudinary.uploader.upload(file_data, **options)
+    return result.get("secure_url")

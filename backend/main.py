@@ -4,11 +4,10 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.sessions import SessionMiddleware
 
 from config import settings
 from database import create_db_and_tables
-from routers import auth, campgrounds, comments, social, vector_rag
+from routers import auth, campgrounds, comments, social, vector_rag, visitor_photos
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,9 +29,6 @@ app = FastAPI(
     version="2.0.0",
     lifespan=lifespan
 )
-
-# Session middleware for backwards-compatibility support
-app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 
 # CORS middleware configured for React frontend communication with credentials
 app.add_middleware(
@@ -64,15 +60,22 @@ if os.path.exists(upload_dir):
 async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
-# Include Routers
-app.include_router(auth.router)
-app.include_router(campgrounds.router, prefix="/index")
-app.include_router(comments.router, prefix="/index/{id}/comments")
-# Mount social router at both /{id}/social (for campground context) and /social
-app.include_router(social.router, prefix="/index/{id}/social")
-app.include_router(social.router, prefix="/social")
-app.include_router(vector_rag.router, prefix="/api")
-app.include_router(vector_rag.router)
+# Modern Canonical REST Routers
+app.include_router(auth.router, prefix="/api", tags=["Auth"])
+app.include_router(auth.router, tags=["Auth Root"])
+app.include_router(campgrounds.router, prefix="/api/campgrounds", tags=["Campgrounds"])
+app.include_router(campgrounds.router, prefix="/campgrounds", tags=["Campgrounds Direct"])
+app.include_router(comments.router, prefix="/api/campgrounds/{id}/comments", tags=["Comments"])
+app.include_router(comments.router, prefix="/campgrounds/{id}/comments", tags=["Comments Direct"])
+app.include_router(social.router, prefix="/api", tags=["Social"])
+app.include_router(social.router, tags=["Social Direct"])
+app.include_router(visitor_photos.router, prefix="/api", tags=["Stories & Photos"])
+app.include_router(visitor_photos.router, tags=["Stories Direct"])
+app.include_router(vector_rag.router, prefix="/api/rag", tags=["Vector & RAG"])
+app.include_router(vector_rag.router, prefix="/api", tags=["Vector & RAG API"])
+app.include_router(vector_rag.agent_router, prefix="/api/agent", tags=["AI Agent"])
+app.include_router(vector_rag.agent_router, prefix="/api", tags=["AI Agent API"])
+
 
 @app.get("/")
 async def root():

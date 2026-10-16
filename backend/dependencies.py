@@ -9,17 +9,11 @@ def get_current_user(request: Request, db: Session = Depends(get_session)) -> Op
     # 1. First check HTTP-only cookie
     token = request.cookies.get("access_token")
     
-    # 2. Check Authorization Bearer header fallback
+    # 2. Check Authorization Bearer header
     if not token:
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header[7:].strip()
-            
-    # 3. Check legacy session fallback
-    if not token and "session" in request.scope:
-        legacy_id = request.session.get("user_id")
-        if legacy_id:
-            return db.get(User, legacy_id)
             
     if not token:
         return None

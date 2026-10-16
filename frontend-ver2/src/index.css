@@ -341,3 +341,68 @@
   .bento-emerge { opacity: 1 !important; filter: none !important; transform: none !important; transition: none !important; }
   .ch-glow { animation: none !important; }
 }
+
+/* ═══════════════════════════════════════
+   DRIVER.JS SPOTLIGHT & POPOVER (AURORA DESIGN)
+   ═══════════════════════════════════════ */
+.aurora-driver-popover {
+  background: rgba(10, 18, 32, 0.95) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  backdrop-filter: blur(16px) !important;
+  border-radius: 1rem !important;
+  padding: 1.25rem !important;
+  color: #eaf2fb !important;
+  box-shadow: 0 20px 40px rgba(3, 7, 18, 0.8), 0 0 30px rgba(56, 189, 248, 0.25) !important;
+  max-width: 340px !important;
+}
+
+.aurora-driver-popover .driver-popover-title {
+  font-family: var(--font-display), sans-serif !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  color: #38bdf8 !important;
+  margin-bottom: 0.35rem !important;
+}
+
+.aurora-driver-popover .driver-popover-description {
+  font-family: var(--font-sans), sans-serif !important;
+  font-size: 0.825rem !important;
+  color: #9fb3c8 !important;
+  line-height: 1.5 !important;
+}
+
+.aurora-driver-popover .driver-popover-close-btn {
+  color: #7c93ab !important;
+  transition: color 0.2s !important;
+}
+.aurora-driver-popover .driver-popover-close-btn:hover {
+  color: #eaf2fb !important;
+}
+
+.aurora-driver-popover .driver-popover-footer button {
+  background: #0ea5e9 !important;
+  color: #04121f !important;
+  font-weight: 700 !important;
+  font-size: 0.75rem !important;
+  border-radius: 0.5rem !important;
+  padding: 0.4rem 0.8rem !important;
+  border: none !important;
+  text-shadow: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+}
+
+.aurora-driver-popover .driver-popover-footer button:hover {
+  background: #38bdf8 !important;
+  transform: translateY(-1px) !important;
+}
+
+.driver-overlay {
+  background-color: rgba(5, 10, 20, 0.75) !important;
+}
+
+.driver-stage-active {
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.8), 0 0 25px rgba(56, 189, 248, 0.5) !important;
+  border-radius: 0.75rem !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}

@@ -1,8 +1,10 @@
 import React from 'react';
 import Icon from './Icons';
 import ScrollReveal from './ScrollReveal';
+import StoryBar from './stories/StoryBar';
 
 const STORIES = [
+
   {
     quote: "Finding a true dark-sky pitch with zero light pollution changed how my family experiences the outdoors. The coordinates and water notices were spot on.",
     author: "Elena Rostova",
@@ -49,7 +51,22 @@ export default function CamperStories() {
         </div>
       </ScrollReveal>
 
+      {/* Live Backcountry Moments / Instagram-Style Story Bar */}
+      <div className="mb-12 sm:mb-16 glass-obsidian rounded-3xl p-5 sm:p-7 border border-border/70 relative overflow-hidden shadow-2xl">
+        <div className="flex items-center justify-between mb-4 px-2">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <h3 className="font-display font-bold text-xs sm:text-sm uppercase tracking-wider text-fg">
+              Community Trail Moments
+            </h3>
+          </div>
+          <span className="text-[11px] text-fg-subtle">Tap avatar to view</span>
+        </div>
+        <StoryBar />
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
+
         {STORIES.map((story, i) => (
           <ScrollReveal
             key={story.author}

@@ -72,7 +72,7 @@ export default function Navbar() {
           </svg>
           <span>AI Search</span>
         </button>
-        {navLink('/index', 'Explore')}
+        {navLink('/campgrounds', 'Explore')}
         {user && navLink('/dashboard', 'Dashboard')}
 
         {user ? (
@@ -161,7 +161,7 @@ export default function Navbar() {
             <Icon.ArrowRight size={15} className="text-sky-400" />
           </button>
           <Link
-            to="/index"
+            to="/campgrounds"
             className="cursor-pointer min-h-[48px] rounded-xl px-4 py-3 text-sm font-semibold text-fg hover:bg-white/5 active:bg-white/10 flex items-center justify-between transition-colors"
           >
             <span className="flex items-center gap-3">

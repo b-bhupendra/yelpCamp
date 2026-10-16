@@ -130,7 +130,7 @@ export default function Landing() {
             <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full sm:w-auto px-2 sm:px-0">
               <Magnetic strength={0.25}>
                 <Link
-                  to="/index"
+                  to="/campgrounds"
                   className="group relative cursor-pointer w-full sm:w-auto inline-flex items-center justify-center px-8 sm:px-12 py-3.5 sm:py-5 min-h-[48px] rounded-full font-bold text-xs uppercase tracking-[0.2em] sm:tracking-[0.24em] text-on-primary bg-primary overflow-hidden transition-all duration-300 hover:scale-[1.04] active:scale-95 shadow-[0_0_35px_rgba(14,165,233,0.35)] hover:shadow-[0_0_55px_rgba(14,165,233,0.6)]"
                 >
                   <span className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
@@ -311,7 +311,7 @@ export default function Landing() {
                 </Magnetic>
                 <Magnetic strength={0.1}>
                   <Link
-                    to="/index"
+                    to="/campgrounds"
                     className="cursor-pointer w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 sm:px-10 py-4 sm:py-5 min-h-[48px] border border-border-strong hover:border-secondary text-fg rounded-full font-bold text-xs uppercase tracking-[0.2em] transition-all duration-200 hover:bg-surface-2 active:scale-95"
                   >
                     Browse all campsites
@@ -336,7 +336,7 @@ export default function Landing() {
             Crafted for people who sleep under the stars
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs text-fg-muted">
-            <Link to="/index" className="hover:text-fg transition-colors">Explore</Link>
+            <Link to="/campgrounds" className="hover:text-fg transition-colors">Explore</Link>
             <Link to="/login" className="hover:text-fg transition-colors">Sign in</Link>
             <Link to="/register" className="hover:text-fg transition-colors">Register</Link>
             <span className="text-fg-subtle hidden sm:inline">•</span>

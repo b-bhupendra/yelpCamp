@@ -14,7 +14,7 @@ export default function Register() {
     e.preventDefault();
     try {
       await register(username, password);
-      navigate('/index');
+      navigate('/campgrounds');
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed. Try a different username.');
     }

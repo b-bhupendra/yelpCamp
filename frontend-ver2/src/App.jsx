@@ -1,11 +1,11 @@
 import React, { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Landing from './pages/Landing';
 import { AuthProvider } from './context/AuthContext';
-import CustomCursor from './components/CustomCursor';
-import SmoothScroll from './components/SmoothScroll';
-import AIAssistantDock from './components/AIAssistantDock';
+import { AgentProvider } from './context/AgentContext';
+import { ToastProvider } from './context/ToastContext';
+import GlobalErrorBoundary from './components/layout/GlobalErrorBoundary';
+import AppLayout from './components/layout/AppLayout';
 
 // Route-level code-splitting for secondary views
 const Login = lazy(() => import('./pages/Login'));
@@ -15,6 +15,7 @@ const CampgroundDetails = lazy(() => import('./pages/CampgroundDetails'));
 const NewCampground = lazy(() => import('./pages/NewCampground'));
 const EditCampground = lazy(() => import('./pages/EditCampground'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 function RouteLoadingFallback() {
   return (
@@ -29,29 +30,33 @@ function RouteLoadingFallback() {
 
 function App() {
   return (
-    <AuthProvider>
-      <SmoothScroll>
-        <Router>
-          <CustomCursor />
-          <div className="min-h-screen bg-background text-fg selection:bg-secondary/30">
-            <Navbar />
-            <Suspense fallback={<RouteLoadingFallback />}>
-              <Routes>
-                <Route path="/" element={<Landing />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/index" element={<CampgroundList />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/campgrounds/new" element={<NewCampground />} />
-                <Route path="/campgrounds/:id" element={<CampgroundDetails />} />
-                <Route path="/campgrounds/:id/edit" element={<EditCampground />} />
-              </Routes>
-            </Suspense>
-            <AIAssistantDock />
-          </div>
-        </Router>
-      </SmoothScroll>
-    </AuthProvider>
+    <GlobalErrorBoundary>
+      <AuthProvider>
+        <ToastProvider>
+          <Router>
+            <AgentProvider>
+              <AppLayout>
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <Routes>
+                    <Route path="/" element={<Landing />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/campgrounds" element={<CampgroundList />} />
+                    <Route path="/explore" element={<CampgroundList />} />
+                    <Route path="/index" element={<Navigate to="/campgrounds" replace />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/campgrounds/new" element={<NewCampground />} />
+                    <Route path="/campgrounds/:id" element={<CampgroundDetails />} />
+                    <Route path="/campgrounds/:id/edit" element={<EditCampground />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </AppLayout>
+            </AgentProvider>
+          </Router>
+        </ToastProvider>
+      </AuthProvider>
+    </GlobalErrorBoundary>
   );
 }
 

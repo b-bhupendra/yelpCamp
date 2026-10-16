@@ -1,9 +1,10 @@
 import os
-import uuid
-import shutil
-from typing import Optional, List, Union
-from fastapi import APIRouter, Request, Depends, HTTPException, Form, UploadFile, File, Query
+import json
+import logging
+from typing import Optional, List, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, BackgroundTasks
 from sqlmodel import Session, select, func
+
 from models import Campground, User, Comment
 from database import get_session
 from dependencies import is_logged_in, check_campground_author
@@ -13,6 +14,9 @@ from schemas import (
 )
 from config import settings
 from services.cloudinary_service import upload_campground_image, get_user_avatar_url
+from routers.comments import build_comment_tree
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["campgrounds"])
 
@@ -22,130 +26,168 @@ try:
 except Exception:
     pass
 
-@router.get("/")
-async def get_campgrounds(
+def format_campground_out(campground: Campground) -> Dict[str, Any]:
+    """Helper to convert a Campground model to a clean dictionary matching CampgroundOut."""
+    likes = len([v for v in campground.votes if v.vote_type == 1]) if campground.votes else 0
+    dislikes = len([v for v in campground.votes if v.vote_type == -1]) if campground.votes else 0
+    author_avatar = get_user_avatar_url(
+        campground.author_username,
+        campground.author.avatar_url if campground.author else None
+    )
+
+    gallery_imgs = []
+    if campground.gallery_images:
+        try:
+            gallery_imgs = json.loads(campground.gallery_images) if isinstance(campground.gallery_images, str) else list(campground.gallery_images)
+        except Exception:
+            gallery_imgs = []
+
+    amenities_list = []
+    if campground.amenities:
+        try:
+            amenities_list = json.loads(campground.amenities) if isinstance(campground.amenities, str) else list(campground.amenities)
+        except Exception:
+            amenities_list = []
+
+    rules_dict = {}
+    if campground.rules:
+        try:
+            rules_dict = json.loads(campground.rules) if isinstance(campground.rules, str) else dict(campground.rules)
+        except Exception:
+            rules_dict = {"notes": str(campground.rules)}
+
+    comments_list = [
+        {
+            "id": c.id,
+            "text": c.text,
+            "author_id": c.author_id,
+            "author_username": c.author_username,
+            "author_avatar": get_user_avatar_url(
+                c.author_username,
+                c.author_avatar or (c.author.avatar_url if c.author else None)
+            ),
+            "campground_id": c.campground_id,
+            "parent_comment_id": c.parent_comment_id,
+            "rating": c.rating,
+            "created_at": c.created_at,
+            "replies": []
+        }
+        for c in (campground.comments or [])
+    ]
+
+    return {
+        "id": campground.id,
+        "title": campground.title or "",
+        "price": float(campground.price) if campground.price is not None else 0.0,
+        "image": campground.image or "",
+        "description": campground.description or "",
+        "location": campground.location or "",
+        "location_address": campground.location_address or "",
+        "gallery_images": gallery_imgs,
+        "amenities": amenities_list,
+        "rules": rules_dict,
+        "avg_rating": campground.avg_rating or 0.0,
+        "ai_media_caption": campground.ai_media_caption or "",
+        "community_summary": campground.community_summary or "",
+        "author_id": campground.author_id,
+        "author_username": campground.author_username,
+        "author_avatar": author_avatar,
+        "likes_count": likes,
+        "dislikes_count": dislikes,
+        "visitor_photos_count": len(campground.visitor_photos) if campground.visitor_photos else 0,
+        "comments": comments_list,
+        "comments_tree": build_comment_tree(campground.comments or [])
+    }
+
+@router.get("/", response_model=PaginatedCampgrounds)
+async def list_campgrounds(
     search: Optional[str] = None,
     min_price: Optional[float] = None,
     max_price: Optional[float] = None,
     sort: Optional[str] = None,
-    page: Optional[int] = Query(None, ge=1),
+    page: int = Query(1, ge=1),
     limit: int = Query(12, ge=1, le=100),
     db: Session = Depends(get_session)
 ):
+    """List campgrounds with native SQL search, price filtering, and pagination."""
     query = select(Campground)
 
-    # Search filter (name or description)
+    # Search filter natively on title or description
     if search:
         search_pattern = f"%{search}%"
         query = query.where(
-            (Campground.name.ilike(search_pattern)) | 
+            (Campground.title.ilike(search_pattern)) | 
             (Campground.description.ilike(search_pattern))
         )
 
-    # Fetch all matching campgrounds
-    all_results = db.exec(query).all()
+    # Native SQL price filtering
+    if min_price is not None:
+        query = query.where(Campground.price >= min_price)
+    if max_price is not None:
+        query = query.where(Campground.price <= max_price)
 
-    # Price filtering in Python (since price is stored as string in legacy schema)
-    filtered_results = []
-    for camp in all_results:
-        try:
-            p_val = float(camp.price.replace("$", "").strip())
-        except (ValueError, AttributeError):
-            p_val = 0.0
-
-        if min_price is not None and p_val < min_price:
-            continue
-        if max_price is not None and p_val > max_price:
-            continue
-        filtered_results.append(camp)
-
-    # Sorting
+    # Native SQL sorting
     if sort == "price_asc":
-        filtered_results.sort(key=lambda c: float(c.price.replace("$", "").strip()) if c.price.replace("$", "").strip().replace(".", "").isdigit() else 0)
+        query = query.order_by(Campground.price.asc())
     elif sort == "price_desc":
-        filtered_results.sort(key=lambda c: float(c.price.replace("$", "").strip()) if c.price.replace("$", "").strip().replace(".", "").isdigit() else 0, reverse=True)
-    elif sort == "name":
-        filtered_results.sort(key=lambda c: c.name.lower())
+        query = query.order_by(Campground.price.desc())
+    elif sort == "title":
+        query = query.order_by(Campground.title.asc())
     else:
-        # Default order (newest/by id descending)
-        filtered_results.reverse()
+        query = query.order_by(Campground.id.desc())
 
-    # If page parameter is not provided, return simple list for backwards compatibility
-    if page is None:
-        return filtered_results
-
-    # Pagination calculation
-    total = len(filtered_results)
+    # Total count and paginated items
+    all_matched = db.exec(query).all()
+    total = len(all_matched)
     start = (page - 1) * limit
-    end = start + limit
-    paginated_items = filtered_results[start:end]
+    paginated_records = db.exec(query.offset(start).limit(limit)).all()
     total_pages = (total + limit - 1) // limit if total > 0 else 1
 
-    return {
-        "data": paginated_items,
-        "total": total,
-        "page": page,
-        "limit": limit,
-        "pages": total_pages
-    }
+    return PaginatedCampgrounds(
+        items=[format_campground_out(c) for c in paginated_records],
+        total=total,
+        page=page,
+        limit=limit,
+        total_pages=total_pages
+    )
 
 @router.post("/upload", response_model=FileUploadResponse)
 async def upload_image(
     file: UploadFile = File(...),
     current_user: User = Depends(is_logged_in)
 ):
-    from services.cloudinary_service import upload_campground_image
-
-    # Validate file extension
+    """Upload a campsite image to Cloudinary CDN."""
     allowed_exts = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in allowed_exts:
         raise HTTPException(status_code=400, detail="Invalid file format. Allowed: JPG, PNG, WEBP, GIF.")
 
     cdn_url = upload_campground_image(file.file)
-
     return {
         "url": cdn_url,
         "filename": file.filename
     }
 
-@router.post("/")
+@router.post("/", response_model=CampgroundOut, status_code=201)
 async def create_campground(
-    request: Request,
+    data: CampgroundCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_session),
     current_user: User = Depends(is_logged_in)
 ):
-    name = None
-    image = None
-    price = "50"
-    description = ""
-
-    # Parse JSON or Form payload
-    content_type = request.headers.get("content-type", "")
-    if "application/json" in content_type:
-        body = await request.json()
-        name = body.get("name")
-        image = body.get("image")
-        price = str(body.get("price", "50"))
-        description = body.get("description", "")
-    else:
-        form = await request.form()
-        name = form.get("name")
-        image = form.get("image")
-        price = str(form.get("price", "50"))
-        description = form.get("description", "")
-
-    if not name:
-        raise HTTPException(status_code=400, detail="Campground name is required")
-
-    if not image:
-        image = "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=800&q=80"
+    """Create a new campground with typed JSON schema."""
+    from services.multimodal_embedder import process_campground_ingestion
 
     new_campground = Campground(
-        name=name,
-        image=image,
-        price=price,
-        description=description,
+        title=data.title,
+        image=data.image,
+        price=data.price,
+        description=data.description,
+        location=data.location or "",
+        location_address=data.location_address or "",
+        gallery_images=json.dumps(data.gallery_images) if data.gallery_images else "[]",
+        amenities=json.dumps(data.amenities) if data.amenities else "[]",
+        rules=json.dumps(data.rules) if data.rules else "",
         author_id=current_user.id,
         author_username=current_user.username
     )
@@ -153,130 +195,84 @@ async def create_campground(
     db.commit()
     db.refresh(new_campground)
 
-    # Automatically index into Vector RAG database
-    try:
-        from services.multimodal_embedder import multimodal_embedder
-        from services.vector_store import vector_store
-        summary, emb = multimodal_embedder.build_multimodal_profile(
-            name=new_campground.name,
-            description=new_campground.description,
-            price=new_campground.price,
-            image_url=new_campground.image,
-            comments=[]
-        )
-        vector_store.save_embedding(
-            session=db,
-            campground_id=new_campground.id,
-            embedding=emb,
-            content_summary=summary,
-            has_image=True
-        )
-    except Exception:
-        pass
+    background_tasks.add_task(process_campground_ingestion, new_campground.id)
+    return format_campground_out(new_campground)
 
-    return new_campground
-
-@router.get("/{id}")
+@router.get("/{id}", response_model=CampgroundOut)
 async def get_campground(id: int, db: Session = Depends(get_session)):
+    """Retrieve full campsite details."""
     campground = db.get(Campground, id)
     if not campground:
         raise HTTPException(status_code=404, detail="Campground not found")
-    
-    likes = len([v for v in campground.votes if v.vote_type == 1])
-    dislikes = len([v for v in campground.votes if v.vote_type == -1])
-    author_avatar = get_user_avatar_url(
-        campground.author_username,
-        campground.author.avatar_url if campground.author else None
-    )
-    
-    liked_by = [
-        {
-            "user_id": v.user_id,
-            "username": v.user.username if v.user else f"Scout_{v.user_id}",
-            "avatar_url": get_user_avatar_url(
-                v.user.username if v.user else f"Scout_{v.user_id}",
-                v.user.avatar_url if v.user else None
-            )
-        }
-        for v in campground.votes if v.vote_type == 1
-    ]
+    return format_campground_out(campground)
 
-    return {
-        "id": campground.id,
-        "name": campground.name,
-        "price": campground.price,
-        "image": campground.image,
-        "description": campground.description,
-        "author_id": campground.author_id,
-        "author_username": campground.author_username,
-        "author_avatar": author_avatar,
-        "likes_count": likes,
-        "dislikes_count": dislikes,
-        "liked_by": liked_by[:6],
-        "comments": [
-            {
-                "id": c.id,
-                "text": c.text,
-                "author_id": c.author_id,
-                "author_username": c.author_username,
-                "author_avatar": get_user_avatar_url(
-                    c.author_username,
-                    c.author_avatar or (c.author.avatar_url if c.author else None)
-                ),
-                "campground_id": c.campground_id
-            } for c in campground.comments
-        ]
-    }
-
-@router.get("/{id}/edit")
-async def get_edit_campground(
-    id: int,
-    campground: Campground = Depends(check_campground_author)
-):
-    return campground
-
-@router.post("/{id}/edit")
-@router.put("/{id}")
+@router.put("/{id}", response_model=CampgroundOut)
 async def update_campground(
     id: int,
-    request: Request,
+    data: CampgroundUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_session),
     campground: Campground = Depends(check_campground_author)
 ):
-    content_type = request.headers.get("content-type", "")
-    if "application/json" in content_type:
-        body = await request.json()
-        if "name" in body and body["name"]:
-            campground.name = body["name"]
-        if "image" in body and body["image"]:
-            campground.image = body["image"]
-        if "price" in body and body["price"]:
-            campground.price = str(body["price"])
-        if "description" in body:
-            campground.description = body["description"]
-    else:
-        form = await request.form()
-        if form.get("name"):
-            campground.name = form.get("name")
-        if form.get("image"):
-            campground.image = form.get("image")
-        if form.get("price"):
-            campground.price = str(form.get("price"))
-        if form.get("description") is not None:
-            campground.description = form.get("description")
+    """Update campsite details with pure REST PUT."""
+    from services.multimodal_embedder import process_campground_ingestion
+
+    if data.title is not None:
+        campground.title = data.title
+    if data.image is not None:
+        campground.image = data.image
+    if data.price is not None:
+        campground.price = data.price
+    if data.description is not None:
+        campground.description = data.description
+    if data.location is not None:
+        campground.location = data.location
+    if data.location_address is not None:
+        campground.location_address = data.location_address
+    if data.gallery_images is not None:
+        campground.gallery_images = json.dumps(data.gallery_images)
+    if data.amenities is not None:
+        campground.amenities = json.dumps(data.amenities)
+    if data.rules is not None:
+        campground.rules = json.dumps(data.rules)
 
     db.add(campground)
     db.commit()
     db.refresh(campground)
-    return campground
 
-@router.post("/{id}/delete")
+    background_tasks.add_task(process_campground_ingestion, campground.id)
+    return format_campground_out(campground)
+
 @router.delete("/{id}")
 async def delete_campground(
     id: int,
     db: Session = Depends(get_session),
     campground: Campground = Depends(check_campground_author)
 ):
+    """Cascade delete campsite and all related entities with pure REST DELETE."""
+    from models import CampgroundEmbedding, Vote, Wishlist, CheckIn, VisitorPhoto, VisitorPhotoLike, Comment
+    from sqlmodel import select, delete
+
+    # 1. Delete vector embeddings
+    db.exec(delete(CampgroundEmbedding).where(CampgroundEmbedding.campground_id == id))
+    
+    # 2. Delete visitor photos and photo child records (likes and photo comments)
+    photos = db.exec(select(VisitorPhoto).where(VisitorPhoto.campground_id == id)).all()
+    for p in photos:
+        db.exec(delete(VisitorPhotoLike).where(VisitorPhotoLike.photo_id == p.id))
+        db.exec(delete(Comment).where(Comment.photo_id == p.id))
+        db.delete(p)
+
+    # 3. Delete comments on campground (replies first then root comments)
+    db.exec(delete(Comment).where(Comment.campground_id == id, Comment.parent_comment_id.is_not(None)))
+    db.exec(delete(Comment).where(Comment.campground_id == id))
+
+    # 4. Delete votes, wishlists, and check-ins
+    db.exec(delete(Vote).where(Vote.campground_id == id))
+    db.exec(delete(Wishlist).where(Wishlist.campground_id == id))
+    db.exec(delete(CheckIn).where(CheckIn.campground_id == id))
+
+    # 5. Delete campground entity
     db.delete(campground)
     db.commit()
     return {"message": "Campground deleted successfully", "id": id}

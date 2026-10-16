@@ -102,7 +102,7 @@ function CampsiteCard({ camp, index, delay, visible, cardRef }) {
   return (
     <Link
       ref={cardRef}
-      to="/index"
+      to="/campgrounds"
       data-bento-idx={index}
       style={{ transitionDelay: `${delay}ms` }}
       className={`bento-emerge group relative block aspect-[16/10] sm:aspect-auto overflow-hidden rounded-2xl sm:rounded-3xl border border-border/80 bg-surface/60 backdrop-blur-md ${camp.span} ${
@@ -258,7 +258,7 @@ export default function CampsiteBento() {
       <ScrollReveal variant="fade-scale" delay={150}>
         <div className="mt-10 sm:mt-14 flex justify-center">
           <Link
-            to="/index"
+            to="/campgrounds"
             className="inline-flex cursor-pointer items-center justify-center gap-2.5 rounded-full border border-border-strong bg-surface/60 px-7 sm:px-9 py-3.5 sm:py-4 text-xs font-bold uppercase tracking-[0.2em] text-fg transition-all duration-300 hover:border-secondary hover:bg-surface-2 hover:shadow-[0_0_30px_rgba(56,189,248,0.25)] active:scale-95 min-h-[48px]"
           >
             Explore all {CAMPSITES.length}+ campsites

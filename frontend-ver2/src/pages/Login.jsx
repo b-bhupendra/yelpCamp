@@ -14,7 +14,7 @@ export default function Login() {
     e.preventDefault();
     try {
       await login(username, password);
-      navigate('/index');
+      navigate('/campgrounds');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed. Please check your credentials.');
     }

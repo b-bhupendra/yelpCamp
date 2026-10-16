@@ -38,8 +38,9 @@ class Settings(BaseSettings):
     
     # Gemini Vector RAG & LLM Configuration
     GEMINI_API_KEY: Optional[str] = None
-    EMBEDDING_MODEL: str = "gemini-embedding-001"
-    CHAT_MODEL: str = "gemini-3.5-flash-lite"
+    EMBEDDING_MODEL: str = "gemini-embedding-2"
+    CHAT_MODEL: str = "gemini-3.5-flash"
+    VISION_MODEL: str = "gemini-3.5-flash"
     
     model_config = SettingsConfigDict(
         env_file=".env",

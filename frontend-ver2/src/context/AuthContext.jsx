@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     try {
-      const response = await api.get('/me');
+      const response = await api.get('/api/me');
       if (response.data.user) {
         setUser(response.data.user);
         localStorage.setItem('yelpcamp_user', JSON.stringify(response.data.user));
@@ -38,11 +38,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (username, password) => {
-    const formData = new FormData();
-    formData.append('username', username);
-    formData.append('password', password);
-
-    const response = await api.post('/login', formData);
+    const response = await api.post('/api/login', { username, password });
     const data = response.data;
     if (data.access_token) {
       localStorage.setItem('yelpcamp_token', data.access_token);
@@ -53,11 +49,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (username, password) => {
-    const formData = new FormData();
-    formData.append('username', username);
-    formData.append('password', password);
-
-    const response = await api.post('/register', formData);
+    const response = await api.post('/api/register', { username, password });
     const data = response.data;
     if (data.access_token) {
       localStorage.setItem('yelpcamp_token', data.access_token);
@@ -68,7 +60,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const loginWithGoogle = async (credential) => {
-    const response = await api.post('/auth/google', { token: credential });
+    const response = await api.post('/api/auth/google', { token: credential });
     const data = response.data;
     if (data.access_token) {
       localStorage.setItem('yelpcamp_token', data.access_token);
@@ -80,7 +72,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await api.get('/logout');
+      await api.post('/api/logout');
     } catch (e) {
       console.warn('Logout notice:', e);
     }

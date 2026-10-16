@@ -111,6 +111,13 @@ export const ArrowRight = (p) => (
   </Svg>
 );
 
+export const ArrowLeft = (p) => (
+  <Svg {...p}>
+    <path d="M19 12H5" />
+    <path d="m11 18-6-6 6-6" />
+  </Svg>
+);
+
 export const Search = (p) => (
   <Svg {...p}>
     <circle cx="11" cy="11" r="7" />
@@ -197,11 +204,93 @@ export const Droplet = (p) => (
   </Svg>
 );
 
+export const Heart = (p) => (
+  <Svg {...p}>
+    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+  </Svg>
+);
+
+export const MessageCircle = (p) => (
+  <Svg {...p}>
+    <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+  </Svg>
+);
+
+export const Share2 = (p) => (
+  <Svg {...p}>
+    <circle cx="18" cy="5" r="3" />
+    <circle cx="6" cy="12" r="3" />
+    <circle cx="18" cy="19" r="3" />
+    <path d="m8.59 13.51 6.83 3.98" />
+    <path d="m15.41 6.51-6.82 3.98" />
+  </Svg>
+);
+
+export const Trash2 = (p) => (
+  <Svg {...p}>
+    <path d="M3 6h18" />
+    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+    <line x1="10" x2="10" y1="11" y2="17" />
+    <line x1="14" x2="14" y1="11" y2="17" />
+  </Svg>
+);
+
+export const Play = (p) => (
+  <Svg {...p}>
+    <polygon points="6 3 20 12 6 21 6 3" />
+  </Svg>
+);
+
+export const Pause = (p) => (
+  <Svg {...p}>
+    <rect x="6" y="4" width="4" height="16" />
+    <rect x="14" y="4" width="4" height="16" />
+  </Svg>
+);
+
+export const Camera = (p) => (
+  <Svg {...p}>
+    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+    <circle cx="12" cy="13" r="3" />
+  </Svg>
+);
+
+export const Sparkles = (p) => (
+  <Svg {...p}>
+    <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+  </Svg>
+);
+
+export const CornerDownRight = (p) => (
+  <Svg {...p}>
+    <polyline points="15 10 20 15 15 20" />
+    <path d="M4 4v7a4 4 0 0 0 4 4h12" />
+  </Svg>
+);
+
+export const Eye = (p) => (
+  <Svg {...p}>
+    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </Svg>
+);
+
+export const Edit3 = (p) => (
+  <Svg {...p}>
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+  </Svg>
+);
+
 export const Icon = {
   Compass, Mountain, Tent, Gem, Zap, Users, Quote,
-  ArrowUp, ArrowDown, ArrowRight, Search, Plus, MapPin, Star,
+  ArrowUp, ArrowDown, ArrowRight, ArrowLeft, Search, Plus, MapPin, Star,
   LogOut, Menu, Close, Image, Check,
   Flame, Tree, Moon, Droplet,
+  Heart, MessageCircle, Share2, Trash2, Play, Pause, Camera, Sparkles, CornerDownRight,
+  Eye, Edit3,
 };
 
 export default Icon;
+

@@ -68,11 +68,6 @@ async def register(
     token = create_access_token({"sub": str(new_user.id), "username": new_user.username})
     set_auth_cookie(response, token)
     
-    # Backwards compatibility session
-    if "session" in request.scope:
-        request.session["user_id"] = new_user.id
-        request.session["user"] = {"id": new_user.id, "username": new_user.username}
-
     avatar = get_user_avatar_url(new_user.username, new_user.avatar_url)
     return {
         "message": f"Welcome to YelpCamp {new_user.username}",
@@ -81,31 +76,16 @@ async def register(
         "user": {"id": new_user.id, "username": new_user.username, "avatar_url": avatar}
     }
 
-@router.get("/login")
-async def login_page():
-    return {"message": "Login endpoint. Send POST request with username and password."}
-
 @router.post("/login")
 async def login(
-    request: Request,
     response: Response,
     user_data: Optional[UserLogin] = None,
     username: Optional[str] = Form(None),
     password: Optional[str] = Form(None),
     db: Session = Depends(get_session)
 ):
-    # Support both JSON payload and FormData
     uname = user_data.username if user_data else username
     pwd = user_data.password if user_data else password
-
-    if not uname or not pwd:
-        try:
-            body = await request.json()
-            uname = body.get("username")
-            pwd = body.get("password")
-        except Exception:
-            pass
-
     if not uname or not pwd:
         raise HTTPException(status_code=400, detail="Username and password are required")
 
@@ -118,11 +98,6 @@ async def login(
     set_auth_cookie(response, token)
 
     avatar = get_user_avatar_url(user.username, user.avatar_url)
-
-    # Backwards compatibility session
-    if "session" in request.scope:
-        request.session["user_id"] = user.id
-        request.session["user"] = {"id": user.id, "username": user.username, "avatar_url": avatar}
 
     return {
         "message": "Successfully logged in!",
@@ -186,10 +161,6 @@ async def google_auth(
     # 3. Issue YelpCamp JWT token
     jwt_token = create_access_token({"sub": str(user.id), "username": user.username})
     set_auth_cookie(response, jwt_token)
-
-    if "session" in request.scope:
-        request.session["user_id"] = user.id
-        request.session["user"] = {"id": user.id, "username": user.username, "avatar_url": user.avatar_url}
 
     avatar = get_user_avatar_url(user.username, user.avatar_url)
     return {
@@ -275,11 +246,8 @@ async def update_avatar(
         }
     }
 
-@router.get("/logout")
 @router.post("/logout")
-async def logout(request: Request, response: Response):
+async def logout(response: Response):
     response.delete_cookie("access_token")
-    if "session" in request.scope:
-        request.session.clear()
-    return {"message": "Logged you out!!"}
+    return {"message": "Logged you out successfully"}
 
