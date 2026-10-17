@@ -50,6 +50,10 @@ app.add_middleware(
 # SlowAPI rate limiting middleware (ensures baseline limits across routes)
 app.add_middleware(SlowAPIMiddleware)
 
+# Cloud Run / Proxy headers middleware (ensures X-Forwarded-Proto https is respected)
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
 # Static file serving for user uploaded images (guarded for serverless)
 upload_dir = settings.UPLOAD_DIR
 if not os.path.exists(upload_dir):
@@ -81,10 +85,8 @@ app.include_router(social.router, prefix="/api", tags=["Social"])
 app.include_router(social.router, tags=["Social Direct"])
 app.include_router(visitor_photos.router, prefix="/api", tags=["Stories & Photos"])
 app.include_router(visitor_photos.router, tags=["Stories Direct"])
-app.include_router(vector_rag.router, prefix="/api/rag", tags=["Vector & RAG"])
-app.include_router(vector_rag.router, prefix="/api", tags=["Vector & RAG API"])
-app.include_router(vector_rag.agent_router, prefix="/api/agent", tags=["AI Agent"])
-app.include_router(vector_rag.agent_router, prefix="/api", tags=["AI Agent API"])
+app.include_router(vector_rag.router, prefix="/api", tags=["Vector & RAG"])
+app.include_router(vector_rag.agent_router, prefix="/api", tags=["AI Agent"])
 
 
 @app.get("/")

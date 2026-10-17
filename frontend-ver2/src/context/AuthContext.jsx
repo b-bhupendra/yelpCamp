@@ -9,15 +9,43 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
+      const token = localStorage.getItem('yelpcamp_token');
+      if (!token) {
+        localStorage.removeItem('yelpcamp_user');
+        return null;
+      }
+      // Check token expiry client-side if it's a JWT
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          console.warn('[Auth] Stored token has expired. Clearing session.');
+          localStorage.removeItem('yelpcamp_token');
+          localStorage.removeItem('yelpcamp_user');
+          return null;
+        }
+      } catch {
+        // Non-JWT token
+      }
       const saved = localStorage.getItem('yelpcamp_user');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
     }
   });
-  const [loading, setLoading] = useState(!user);
+
+  const [loading, setLoading] = useState(() => {
+    return typeof window !== 'undefined' && !!localStorage.getItem('yelpcamp_token');
+  });
 
   const checkAuth = async () => {
+    const token = localStorage.getItem('yelpcamp_token');
+    if (!token) {
+      setUser(null);
+      localStorage.removeItem('yelpcamp_user');
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await api.get('/api/me');
       if (response.data.user) {
@@ -25,9 +53,10 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('yelpcamp_user', JSON.stringify(response.data.user));
       }
     } catch (err) {
-      console.log('Not logged in');
+      console.log('Not logged in or token expired');
       setUser(null);
       localStorage.removeItem('yelpcamp_user');
+      localStorage.removeItem('yelpcamp_token');
     } finally {
       setLoading(false);
     }

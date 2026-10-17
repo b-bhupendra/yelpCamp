@@ -104,6 +104,7 @@ def format_campground_out(campground: Campground) -> Dict[str, Any]:
         "comments_tree": build_comment_tree(campground.comments or [])
     }
 
+@router.get("", response_model=PaginatedCampgrounds)
 @router.get("/", response_model=PaginatedCampgrounds)
 async def list_campgrounds(
     search: Optional[str] = None,
@@ -175,6 +176,7 @@ async def upload_image(
         "filename": file.filename
     }
 
+@router.post("", response_model=CampgroundOut, status_code=201)
 @router.post("/", response_model=CampgroundOut, status_code=201)
 @limiter.limit(settings.RATE_LIMIT_CONTENT_CREATE)
 async def create_campground(

@@ -12,8 +12,29 @@ import { useAgent } from '../context/AgentContext';
  * @param {Object} [parameters={}] - Optional parameter schema for dynamic args
  * @param {Array} [deps=[]] - Dependency array to refresh handler if state changes
  */
-export function useAgentAction(id, description, handler, parameters = {}, deps = []) {
+export function useAgentAction(idOrConfig, maybeDescription, maybeHandler, maybeParameters = {}, maybeDeps = []) {
   const { registerAction, unregisterAction } = useAgent();
+
+  let id;
+  let description = '';
+  let handler = null;
+  let parameters = {};
+  let deps = [];
+
+  if (typeof idOrConfig === 'object' && idOrConfig !== null) {
+    id = idOrConfig.id;
+    description = idOrConfig.description || '';
+    handler = idOrConfig.handler;
+    parameters = idOrConfig.parameters || {};
+    deps = idOrConfig.deps || [];
+  } else {
+    id = idOrConfig;
+    description = maybeDescription || '';
+    handler = maybeHandler;
+    parameters = maybeParameters || {};
+    deps = maybeDeps || [];
+  }
+
   const handlerRef = useRef(handler);
 
   useEffect(() => {
@@ -21,14 +42,14 @@ export function useAgentAction(id, description, handler, parameters = {}, deps =
   }, [handler]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || typeof handlerRef.current !== 'function') return;
 
     registerAction(id, {
       description,
       parameters,
       handler: (args) => {
         if (handlerRef.current) {
-          handlerRef.current(args);
+          return handlerRef.current(args);
         }
       }
     });

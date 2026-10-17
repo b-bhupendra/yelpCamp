@@ -377,6 +377,50 @@ class VectorStoreService:
         q_json = json.dumps(query_vec)
 
         # 1. Turso Cloud query with strict vector_distance_cos < 0.25
+        # Fast keyword matching for standard UI navigation actions
+        q_lower = clean_goal.lower()
+        keyword_targets = [
+            (["story", "stories", "moment", "upload photo"], {
+                "feature_name": "Upload Visitor Story",
+                "route": "/campgrounds",
+                "dom_selector": "#btn-upload-story",
+                "description": "Post a 24-hour campsite photo or visitor moment with caption and scenery tags."
+            }),
+            (["share", "qr code", "whatsapp", "copy link"], {
+                "feature_name": "Share Campsite",
+                "route": "/campgrounds",
+                "dom_selector": "#btn-share-property",
+                "description": "Open the one-click share suite to copy direct link, share on WhatsApp, or generate dynamic QR code."
+            }),
+            (["host", "add campsite", "new campsite", "create campground", "host new"], {
+                "feature_name": "Host New Campsite",
+                "route": "/campgrounds/new",
+                "dom_selector": "#btn-new-campground",
+                "description": "Create and list a new campground with multi-image gallery, amenities, and house rules."
+            }),
+            (["explore", "browse", "catalog", "view campsites", "all campgrounds"], {
+                "feature_name": "Explore Trails & Campsites",
+                "route": "/campgrounds",
+                "dom_selector": "#nav-explore",
+                "description": "Browse all curated campsites with pricing, rating filters, and location tags."
+            }),
+            (["dashboard", "profile", "my campsites", "wishlist"], {
+                "feature_name": "User Dashboard",
+                "route": "/dashboard",
+                "dom_selector": "#nav-dashboard",
+                "description": "View your hosted campsites, saved wishlists, and field moments."
+            }),
+            (["review", "comment", "feedback"], {
+                "feature_name": "Read & Post Reviews",
+                "route": "/campgrounds",
+                "dom_selector": "#comments-section",
+                "description": "Explore community field reports, safety notices, and verified camper star ratings."
+            }),
+        ]
+        for keywords, target in keyword_targets:
+            if any(k in q_lower for k in keywords):
+                return target
+
         if settings.USE_TURSO and settings.TURSO_AUTH_TOKEN:
             try:
                 from turso_engine import execute_turso_raw
@@ -385,7 +429,7 @@ class VectorStoreService:
                            vector_distance_cos(u.embedding, vector32(?)) as dist
                     FROM vector_top_k('idx_ui_nav_vec', vector32(?), 1) v
                     JOIN ui_navigation u ON u.rowid = v.id
-                    WHERE vector_distance_cos(u.embedding, vector32(?)) < 0.25
+                    WHERE vector_distance_cos(u.embedding, vector32(?)) < 0.48
                 """
                 res = execute_turso_raw(sql, [q_json, q_json, q_json])
                 rows = res.get("rows", [])
@@ -427,8 +471,8 @@ class VectorStoreService:
                 min_cos_dist = cos_dist
                 best_match = item
 
-        # Strict cutoff: must be < 0.25 (i.e. similarity > 0.75)
-        if min_cos_dist < 0.25 and best_match:
+        # Realistic cutoff: must be < 0.48
+        if min_cos_dist < 0.48 and best_match:
             return {
                 "feature_name": best_match.get("feature_name", ""),
                 "route": best_match.get("route", ""),

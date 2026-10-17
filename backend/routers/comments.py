@@ -43,6 +43,7 @@ def build_comment_tree(comments: List[Comment]) -> List[Dict[str, Any]]:
 
     return roots
 
+@router.get("", response_model=List[CommentOut])
 @router.get("/", response_model=List[CommentOut])
 async def get_comments(
     id: int, 
@@ -54,6 +55,7 @@ async def get_comments(
         raise HTTPException(status_code=404, detail="Campground not found")
     return build_comment_tree(campground.comments)
 
+@router.post("", response_model=CommentOut, status_code=201)
 @router.post("/", response_model=CommentOut, status_code=201)
 @limiter.limit("15/minute")
 async def create_comment(
