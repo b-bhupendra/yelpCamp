@@ -26,15 +26,15 @@ class Settings(BaseSettings):
     
     UPLOAD_DIR: str = "uploads"
     
-    # Cloudinary CDN credentials
-    CLOUDINARY_CLOUD_NAME: str = "hp2tdcbi"
-    CLOUDINARY_API_KEY: str = "664345645987225"
-    CLOUDINARY_API_SECRET: str = "YOUR_CLOUDINARY_API_SECRET"
-    CLOUDINARY_URL: str = "cloudinary://664345645987225:YOUR_CLOUDINARY_API_SECRET@hp2tdcbi"
+    # Cloudinary CDN credentials (loaded from .env / Cloud environment)
+    CLOUDINARY_CLOUD_NAME: Optional[str] = None
+    CLOUDINARY_API_KEY: Optional[str] = None
+    CLOUDINARY_API_SECRET: Optional[str] = None
+    CLOUDINARY_URL: Optional[str] = None
     
-    # Google OAuth 2.0 Credentials
-    GOOGLE_CLIENT_ID: str = "YOUR_GOOGLE_CLIENT_ID"
-    GOOGLE_CLIENT_SECRET: str = "YOUR_GOOGLE_CLIENT_SECRET"
+    # Google OAuth 2.0 Credentials (loaded from .env / Cloud environment)
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
     
     # Gemini Vector RAG & LLM Configuration
     GEMINI_API_KEY: Optional[str] = None
