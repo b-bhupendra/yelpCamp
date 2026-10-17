@@ -49,31 +49,33 @@ class CrossEncoderService:
         q_lower = query.lower()
         q_tokens = [w.strip(".,?!:;\"'") for w in q_lower.split() if w.strip(".,?!:;\"'")]
         
+        stop_words = {"or", "and", "a", "an", "the", "in", "of", "to", "for", "with", "any", "at", "by", "is", "are"}
         negation_cues = {"no", "without", "zero", "not", "non", "never", "free"}
         negated_terms = set()
         for idx, token in enumerate(q_tokens):
             if token in negation_cues:
-                if idx + 1 < len(q_tokens):
+                if idx + 1 < len(q_tokens) and q_tokens[idx + 1] not in stop_words and len(q_tokens[idx + 1]) > 2:
                     negated_terms.add(q_tokens[idx + 1])
-                if idx + 2 < len(q_tokens):
+                if idx + 2 < len(q_tokens) and q_tokens[idx + 2] not in stop_words and len(q_tokens[idx + 2]) > 2:
                     negated_terms.add(q_tokens[idx + 2])
 
+        import re
         scored = []
         for p in passages:
             text = p.get("text", "").lower()
             meta = p.get("meta", {})
             base_score = float(meta.get("similarity_score", 0.65))
 
-            matched_pos = sum(1 for t in q_tokens if t in text and t not in negation_cues)
+            matched_pos = sum(1 for t in q_tokens if t not in stop_words and t not in negation_cues and bool(re.search(rf"\b{re.escape(t)}\b", text)))
             pos_ratio = matched_pos / max(len(q_tokens) - len(negated_terms), 1)
 
-            # Heavy penalty if candidate contains words explicitly negated by user
-            violates_negation = any(neg in text for neg in negated_terms)
+            # Heavy penalty if candidate contains words explicitly negated by user as full words
+            violates_negation = any(bool(re.search(rf"\b{re.escape(neg)}\b", text)) for neg in negated_terms)
             if violates_negation:
                 final_score = 0.04
             else:
                 quiet_boost = 0.20 if (negated_terms and any(w in text for w in ["quiet", "peaceful", "silent", "tranquil", "serene", "chill"])) else 0.0
-                final_score = min(0.98, max(0.12, (base_score * 0.45) + (pos_ratio * 0.45) + quiet_boost))
+                final_score = min(0.98, max(0.28, (base_score * 0.55) + (pos_ratio * 0.35) + quiet_boost))
 
             p_copy = dict(p)
             p_copy["score"] = round(final_score, 4)
@@ -335,14 +337,28 @@ class VectorStoreService:
         if not candidate_dict:
             return []
 
-        # ── STAGE 3: CROSS-ENCODER RERANKING (Catches Negations) ──
+        # ── STAGE 3: CROSS-ENCODER RERANKING (Catches Negations & Price Constraints) ──
         passages = list(candidate_dict.values())
         ranked_passages = self.cross_encoder.rerank(query=clean_query, passages=passages)
+
+        # Budget extraction if specified in query (e.g., "under $50", "under $80")
+        import re
+        budget_match = re.search(r'(?:under|below|less than|<)\s*\$?(\d+)', clean_query, re.IGNORECASE)
+        max_budget = float(budget_match.group(1)) if budget_match else None
 
         # Filter out candidates with cross-encoder score < 0.25 (drops false party camps)
         final_results = []
         for r in ranked_passages:
             score = float(r.get("score", 0.0))
+            meta = r.get("meta", {})
+            camp_price = float(meta.get("price") or 50.0)
+
+            if max_budget is not None:
+                if camp_price <= max_budget:
+                    score = min(0.99, score + 0.15)
+                else:
+                    score = max(0.05, score - 0.25)
+
             if score >= 0.25:
                 meta = r.get("meta", {})
                 match_pct = max(10, min(99, int(score * 100)))
@@ -361,6 +377,9 @@ class VectorStoreService:
                     "match_percentage": match_pct
                 })
 
+        if max_budget is not None:
+            final_results.sort(key=lambda x: (float(x.get("price", 999)) <= max_budget, x.get("similarity_score", 0.0)), reverse=True)
+
         return final_results[:limit]
 
     def find_ui_navigation_target(self, session: Session, user_goal: str) -> Optional[Dict[str, str]]:
@@ -373,44 +392,47 @@ class VectorStoreService:
             return None
 
         clean_goal = user_goal.strip()
+        q_lower = clean_goal.lower()
         query_vec = multimodal_embedder.embed_text(clean_goal)
         q_json = json.dumps(query_vec)
 
-        # 1. Turso Cloud query with strict vector_distance_cos < 0.25
-        # Fast keyword matching for standard UI navigation actions
-        q_lower = clean_goal.lower()
+        # 1. Rejection of destructive/delete actions when no delete button exists
+        if any(w in q_lower for w in ["delete", "remove", "erase", "trash", "destroy"]):
+            return None
+
+        # 2. Precise action phrase matching
         keyword_targets = [
-            (["story", "stories", "moment", "upload photo"], {
+            (["upload story", "post story", "add story", "create story", "share story", "story upload", "upload visitor story", "upload photo", "post moment"], {
                 "feature_name": "Upload Visitor Story",
                 "route": "/campgrounds",
                 "dom_selector": "#btn-upload-story",
                 "description": "Post a 24-hour campsite photo or visitor moment with caption and scenery tags."
             }),
-            (["share", "qr code", "whatsapp", "copy link"], {
+            (["share campsite", "share campground", "qr code", "whatsapp", "copy link", "share link"], {
                 "feature_name": "Share Campsite",
                 "route": "/campgrounds",
                 "dom_selector": "#btn-share-property",
                 "description": "Open the one-click share suite to copy direct link, share on WhatsApp, or generate dynamic QR code."
             }),
-            (["host", "add campsite", "new campsite", "create campground", "host new"], {
+            (["host campsite", "host campground", "add campsite", "new campsite", "create campground", "host new", "add campground"], {
                 "feature_name": "Host New Campsite",
                 "route": "/campgrounds/new",
                 "dom_selector": "#btn-new-campground",
                 "description": "Create and list a new campground with multi-image gallery, amenities, and house rules."
             }),
-            (["explore", "browse", "catalog", "view campsites", "all campgrounds"], {
+            (["explore", "browse catalog", "view all campsites", "all campgrounds", "campsite catalog"], {
                 "feature_name": "Explore Trails & Campsites",
                 "route": "/campgrounds",
                 "dom_selector": "#nav-explore",
                 "description": "Browse all curated campsites with pricing, rating filters, and location tags."
             }),
-            (["dashboard", "profile", "my campsites", "wishlist"], {
+            (["my dashboard", "user dashboard", "my profile", "my campsites", "view wishlist"], {
                 "feature_name": "User Dashboard",
                 "route": "/dashboard",
                 "dom_selector": "#nav-dashboard",
                 "description": "View your hosted campsites, saved wishlists, and field moments."
             }),
-            (["review", "comment", "feedback"], {
+            (["read reviews", "post review", "leave review", "comments section", "show reviews", "view reviews"], {
                 "feature_name": "Read & Post Reviews",
                 "route": "/campgrounds",
                 "dom_selector": "#comments-section",
@@ -424,14 +446,14 @@ class VectorStoreService:
                 "description": "Terminate the active user session and sign out of YelpCamp.",
                 "risk_level": "MUTATE"
             }),
-            (["log in", "login", "sign in", "signin", "sing in", "log me in", "sign me in", "authenticate"], {
+            (["log in", "login", "sign in", "signin", "sing in", "log me in", "sign me in", "authenticate with google", "login with google", "sign in with google"], {
                 "feature_name": "Sign In",
                 "route": "/login",
                 "dom_selector": "#nav-login",
                 "description": "Navigate to the sign-in login portal with email or Google authentication.",
                 "risk_level": "SAFE"
             }),
-            (["register", "sign up", "signup", "create account", "join"], {
+            (["register", "sign up", "signup", "create account", "join yelpcamp"], {
                 "feature_name": "Join YelpCamp",
                 "route": "/register",
                 "dom_selector": "#nav-register",
@@ -451,7 +473,7 @@ class VectorStoreService:
                            vector_distance_cos(u.embedding, vector32(?)) as dist
                     FROM vector_top_k('idx_ui_nav_vec', vector32(?), 1) v
                     JOIN ui_navigation u ON u.rowid = v.id
-                    WHERE vector_distance_cos(u.embedding, vector32(?)) < 0.48
+                    WHERE vector_distance_cos(u.embedding, vector32(?)) < 0.35
                 """
                 res = execute_turso_raw(sql, [q_json, q_json, q_json])
                 rows = res.get("rows", [])
@@ -494,8 +516,8 @@ class VectorStoreService:
                 min_cos_dist = cos_dist
                 best_match = item
 
-        # Realistic cutoff: must be < 0.48
-        if min_cos_dist < 0.48 and best_match:
+        # Realistic cutoff: must be < 0.35
+        if min_cos_dist < 0.35 and best_match:
             return {
                 "feature_name": best_match.get("feature_name", ""),
                 "route": best_match.get("route", ""),

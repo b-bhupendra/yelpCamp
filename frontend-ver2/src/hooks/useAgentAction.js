@@ -20,6 +20,9 @@ export function useAgentAction(idOrConfig, maybeDescription, maybeHandler, maybe
   let handler = null;
   let parameters = {};
   let deps = [];
+  let requiresConfirmation = false;
+  let risk_level = 'SAFE';
+  let feature_name = '';
 
   if (typeof idOrConfig === 'object' && idOrConfig !== null) {
     id = idOrConfig.id;
@@ -27,6 +30,9 @@ export function useAgentAction(idOrConfig, maybeDescription, maybeHandler, maybe
     handler = idOrConfig.handler;
     parameters = idOrConfig.parameters || {};
     deps = idOrConfig.deps || [];
+    requiresConfirmation = Boolean(idOrConfig.requiresConfirmation ?? idOrConfig.requires_confirmation);
+    risk_level = idOrConfig.risk_level || (requiresConfirmation ? 'MUTATE' : 'SAFE');
+    feature_name = idOrConfig.feature_name || idOrConfig.title || '';
   } else {
     id = idOrConfig;
     description = maybeDescription || '';
@@ -47,6 +53,9 @@ export function useAgentAction(idOrConfig, maybeDescription, maybeHandler, maybe
     registerAction(id, {
       description,
       parameters,
+      requiresConfirmation,
+      risk_level,
+      feature_name,
       handler: (args) => {
         if (handlerRef.current) {
           return handlerRef.current(args);
@@ -58,7 +67,7 @@ export function useAgentAction(idOrConfig, maybeDescription, maybeHandler, maybe
       unregisterAction(id);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, description, registerAction, unregisterAction, ...deps]);
+  }, [id, description, requiresConfirmation, risk_level, feature_name, registerAction, unregisterAction, ...deps]);
 }
 
 export default useAgentAction;

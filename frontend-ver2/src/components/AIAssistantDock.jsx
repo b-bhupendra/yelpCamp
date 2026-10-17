@@ -478,7 +478,7 @@ export default function AIAssistantDock() {
                       onClick={pendingApproval.onCancel}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-2 hover:bg-surface-3 text-fg-subtle hover:text-fg transition-colors cursor-pointer"
                     >
-                      Cancel
+                      Reject Action
                     </button>
                     <button
                       type="button"

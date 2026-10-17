@@ -2,7 +2,7 @@ from sqlmodel import create_engine, SQLModel, Session
 from config import settings
 from turso_engine import TursoConnection
 
-if settings.USE_TURSO and settings.TURSO_AUTH_TOKEN:
+if settings.USE_TURSO and settings.TURSO_AUTH_TOKEN and settings.TURSO_DATABASE_URL:
     engine = create_engine(
         "sqlite://",
         creator=lambda: TursoConnection(settings.TURSO_DATABASE_URL, settings.TURSO_AUTH_TOKEN),

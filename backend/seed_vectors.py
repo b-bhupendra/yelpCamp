@@ -48,8 +48,9 @@ def seed_vectors():
                     select(Comment.text).where(Comment.campground_id == camp.id)
                 ).all()
 
+                camp_title = getattr(camp, "title", None) or getattr(camp, "name", f"Campground #{camp.id}")
                 parts = [
-                    f"Campsite: {camp.name}",
+                    f"Campsite: {camp_title}",
                     f"Price: ${camp.price}/night",
                     f"Description: {camp.description}"
                 ]

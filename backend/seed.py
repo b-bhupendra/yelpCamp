@@ -93,26 +93,17 @@ def seed_database():
 
     def execute_bulk_insert(table_name: str, cols: List[str], rows: List[Tuple]):
         col_str = ", ".join(cols)
-        chunk_size = 400
+        row_placeholder = f"({', '.join(['?'] * len(cols))})"
+        chunk_size = 100
         for i in range(0, len(rows), chunk_size):
             chunk = rows[i:i + chunk_size]
-            val_strs = []
-            for r in chunk:
-                formatted = []
-                for v in r:
-                    if v is None:
-                        formatted.append("NULL")
-                    elif isinstance(v, (int, float)):
-                        formatted.append(str(v))
-                    else:
-                        formatted.append(f"'{escape_sql(str(v))}'")
-                val_strs.append(f"({', '.join(formatted)})")
-            
-            sql = f"INSERT INTO {table_name} ({col_str}) VALUES {', '.join(val_strs)};"
+            placeholders = ", ".join([row_placeholder] * len(chunk))
+            sql = f"INSERT INTO {table_name} ({col_str}) VALUES {placeholders};"
+            flat_params = [v for r in chunk for v in r]
             if is_turso:
-                turso_client.execute(sql)
+                turso_client.execute(sql, flat_params)
             else:
-                local_cur.execute(sql)
+                local_cur.execute(sql, flat_params)
 
     # 2. Pre-computing password hashes
     print("\n2. Pre-computing password hashes...")
@@ -144,7 +135,7 @@ def seed_database():
         description = fake.paragraph(nb_sentences=random.randint(3, 6))
         camp_data.append((c_id, name, price, image, description, author_id, author_username))
 
-    execute_bulk_insert("campground", ["id", "name", "price", "image", "description", "author_id", "author_username"], camp_data)
+    execute_bulk_insert("campground", ["id", "title", "price", "image", "description", "author_id", "author_username"], camp_data)
     print(f"   [+] {NUM_CAMPGROUNDS:,} Campgrounds seeded.")
 
     # 5. Comments Generation

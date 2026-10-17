@@ -16,14 +16,15 @@ from services.limiter import limiter
 router = APIRouter(tags=["authentication"])
 
 def set_auth_cookie(response: Response, token: str):
+    is_prod = (getattr(settings, "ENVIRONMENT", "").lower() == "production")
     response.set_cookie(
         key="access_token",
         value=token,
         httponly=True,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         expires=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        samesite="lax",
-        secure=False  # Set True when using HTTPS in production
+        samesite="none" if is_prod else "lax",
+        secure=is_prod
     )
 
 @router.get("/register")
@@ -255,6 +256,12 @@ async def update_avatar(
 
 @router.post("/logout")
 async def logout(response: Response):
-    response.delete_cookie("access_token")
+    is_prod = (getattr(settings, "ENVIRONMENT", "").lower() == "production")
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        samesite="none" if is_prod else "lax",
+        secure=is_prod
+    )
     return {"message": "Logged you out successfully"}
 

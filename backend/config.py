@@ -1,19 +1,33 @@
 import os
 from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
+from pydantic import Field, model_validator
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "YelpCamp API"
     ENVIRONMENT: str = "production"
-    SECRET_KEY: str = "yelpcamp-super-secure-production-secret-key-32chars"
+    SECRET_KEY: str = Field(
+        default="yelpcamp-dev-secret-change-in-production-only",
+        description="JWT Secret Key. Must be overridden via environment variable in production."
+    )
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 # 7 days
     
     DATABASE_URL: str = "sqlite:///database.db"
     USE_TURSO: bool = True
-    TURSO_DATABASE_URL: str = "https://yelpcamp-db-bhupendra123.aws-ap-south-1.turso.io"
-    TURSO_AUTH_TOKEN: str = ""
+    TURSO_DATABASE_URL: Optional[str] = None
+    TURSO_AUTH_TOKEN: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_production_environment(self):
+        if self.ENVIRONMENT.lower() == "production":
+            if not self.SECRET_KEY or self.SECRET_KEY == "yelpcamp-dev-secret-change-in-production-only":
+                import logging
+                logging.getLogger("uvicorn.error").warning(
+                    "[SECURITY WARNING] YelpCamp is running in production with fallback SECRET_KEY. "
+                    "Set SECRET_KEY in cloud environment variables."
+                )
+        return self
     
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",

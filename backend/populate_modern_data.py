@@ -121,19 +121,30 @@ def populate_modern_data():
             # AI caption
             caption = f"Panoramic sanctuary in {loc} offering {', '.join(chosen_amenities[:3])}."
 
-            sql = f"""
+            sql = """
             UPDATE campground
-            SET title = '{escape_sql(c_name)}',
-                location = '{escape_sql(loc)}',
-                location_address = '{escape_sql(loc_addr)}',
-                gallery_images = '{escape_sql(gallery_json)}',
-                amenities = '{escape_sql(amenities_json)}',
-                rules = '{escape_sql(rules_json)}',
-                avg_rating = {rating},
-                ai_media_caption = '{escape_sql(caption)}'
-            WHERE id = {c_id};
+            SET title = ?,
+                location = ?,
+                location_address = ?,
+                gallery_images = ?,
+                amenities = ?,
+                rules = ?,
+                avg_rating = ?,
+                ai_media_caption = ?
+            WHERE id = ?;
             """
-            execute_turso_raw(sql)
+            params = [
+                c_name,
+                loc,
+                loc_addr,
+                gallery_json,
+                amenities_json,
+                rules_json,
+                rating,
+                caption,
+                c_id
+            ]
+            execute_turso_raw(sql, params)
             updated_count += 1
 
         print(f"   [+] Processed {updated_count}/{len(camps)} campgrounds...")
@@ -161,13 +172,24 @@ def populate_modern_data():
             ai_desc = f"Visual moment capturing backcountry scenery at campsite #{camp_id}."
             author_uname = random.choice(["alpinist_sarah", "scout_leo", "trailblazer_dan", "aurora_kai", "admin"])
 
-            sql = f"""
+            sql = """
             INSERT INTO visitor_photos 
             (campground_id, user_id, user_username, user_avatar, media_type, image_url, caption, ai_tags, ai_media_caption, likes_count, created_at, expires_at)
             VALUES 
-            ({camp_id}, 1, '{author_uname}', 'https://api.dicebear.com/7.x/adventurer/svg?seed={author_uname}', 'photo', '{img}', '{escape_sql(cap_text)}', '{escape_sql(ai_tags)}', '{escape_sql(ai_desc)}', {random.randint(5, 48)}, '{now_iso}', NULL);
+            (?, 1, ?, ?, 'photo', ?, ?, ?, ?, ?, ?, NULL);
             """
-            execute_turso_raw(sql)
+            params = [
+                camp_id,
+                author_uname,
+                f"https://api.dicebear.com/7.x/adventurer/svg?seed={author_uname}",
+                img,
+                cap_text,
+                ai_tags,
+                ai_desc,
+                random.randint(5, 48),
+                now_iso
+            ]
+            execute_turso_raw(sql, params)
             story_count += 1
 
     print(f"   [+] Seeded {story_count} visitor moments/stories across campgrounds.")

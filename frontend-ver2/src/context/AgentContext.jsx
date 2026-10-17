@@ -281,6 +281,14 @@ export function AgentProvider({ children }) {
     const mountedAction = actionsRef.current[actionId] || registeredActions[actionId];
     const manifestEntry = UI_CAPABILITY_MANIFEST.find((m) => m.id === actionId);
     const riskLevel = mountedAction?.risk_level || manifestEntry?.risk_level || 'SAFE';
+    const isMutatingOrRequiresConfirmation = Boolean(
+      mountedAction?.requiresConfirmation ||
+      mountedAction?.requires_confirmation ||
+      riskLevel === 'MUTATE' ||
+      manifestEntry?.requiresConfirmation ||
+      manifestEntry?.requires_confirmation ||
+      manifestEntry?.risk_level === 'MUTATE'
+    );
 
     const runNowOrNavigate = () => {
       if (mountedAction && typeof mountedAction.handler === 'function') {
@@ -300,12 +308,12 @@ export function AgentProvider({ children }) {
       }
     };
 
-    // Gate Tier-2 ("MUTATE") actions behind Human-in-the-Loop confirmation
-    if (riskLevel === 'MUTATE') {
+    // Gate Tier-2 ("MUTATE" or requiresConfirmation) actions behind Human-in-the-Loop confirmation
+    if (isMutatingOrRequiresConfirmation) {
       setPendingApproval({
         id: actionId,
         title: mountedAction?.feature_name || manifestEntry?.feature_name || actionId.replace(/_/g, ' '),
-        description: mountedAction?.description || manifestEntry?.description || 'This action will modify or publish data.',
+        description: mountedAction?.description || manifestEntry?.description || 'This action will modify, delete, or publish data.',
         args: actionArgs,
         onConfirm: () => {
           runNowOrNavigate();

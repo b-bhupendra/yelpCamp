@@ -36,6 +36,8 @@ def from_turso_cell(cell: Dict[str, Any]) -> Any:
 
 def execute_turso_raw(sql: str, params: Optional[Sequence[Any]] = None) -> Dict[str, Any]:
     """Execute raw SQL statement against Turso Cloud using HTTP v2 pipeline."""
+    if not settings.TURSO_DATABASE_URL or not settings.TURSO_AUTH_TOKEN:
+        raise ValueError("TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be set in environment to execute Turso queries.")
     url = f"{settings.TURSO_DATABASE_URL.rstrip('/')}/v2/pipeline"
     headers = {
         "Authorization": f"Bearer {settings.TURSO_AUTH_TOKEN}",
