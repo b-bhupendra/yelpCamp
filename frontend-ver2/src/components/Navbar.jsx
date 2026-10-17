@@ -96,6 +96,7 @@ export default function Navbar() {
             </Link>
             <Magnetic strength={0.4}>
               <button
+                id="nav-logout-btn"
                 onClick={handleLogout}
                 className="cursor-pointer inline-flex items-center gap-2 px-5 py-2.5 text-xs font-semibold tracking-wide text-fg-muted hover:text-fg border border-border hover:border-border-strong rounded-full transition-colors duration-200"
               >
@@ -106,9 +107,10 @@ export default function Navbar() {
           </div>
         ) : (
           <div className="flex items-center gap-6">
-            {navLink('/login', 'Sign in')}
+            {navLink('/login', 'Sign in', 'nav-login')}
             <Magnetic strength={0.3}>
               <Link
+                id="nav-register"
                 to="/register"
                 className="cursor-pointer inline-flex items-center justify-center px-6 py-3 bg-primary text-on-primary rounded-full text-xs font-bold uppercase tracking-[0.14em] transition-transform duration-200 hover:scale-[1.04] active:scale-95"
               >

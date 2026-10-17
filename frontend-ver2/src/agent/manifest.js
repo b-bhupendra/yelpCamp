@@ -57,5 +57,29 @@ export const UI_CAPABILITY_MANIFEST = [
     dom_selector: "#nav-dashboard",
     risk_level: "SAFE",
     description: "View your hosted campgrounds, saved wishlist items, and total community likes.",
+  },
+  {
+    id: "user_login",
+    feature_name: "Sign In",
+    route: "/login",
+    dom_selector: "#nav-login",
+    risk_level: "SAFE",
+    description: "Navigate to the sign-in login portal with email or Google authentication.",
+  },
+  {
+    id: "user_logout",
+    feature_name: "Log Out",
+    route: "/campgrounds",
+    dom_selector: "#nav-logout-btn",
+    risk_level: "MUTATE",
+    description: "Terminate the active user session and sign out of YelpCamp.",
+  },
+  {
+    id: "user_register",
+    feature_name: "Join YelpCamp",
+    route: "/register",
+    dom_selector: "#nav-register",
+    risk_level: "SAFE",
+    description: "Create a new wilderness explorer account on YelpCamp.",
   }
 ];

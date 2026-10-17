@@ -4,12 +4,14 @@ import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import api from '../api';
 import { UI_CAPABILITY_MANIFEST } from '../agent/manifest';
+import { useAuth } from './AuthContext';
 
 const AgentContext = createContext(null);
 
 export function AgentProvider({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
 
   const [registeredActions, setRegisteredActions] = useState({});
   const actionsRef = useRef({});
@@ -27,10 +29,15 @@ export function AgentProvider({ children }) {
   // Human-in-the-Loop (HITL) state for high-stakes mutating actions
   const [pendingApproval, setPendingApproval] = useState(null);
 
-  // 1. Keep current_route updated in uiContext
+  // 1. Keep current_route and auth state updated in uiContext
   useEffect(() => {
-    setUiContextState((prev) => ({ ...prev, current_route: location.pathname }));
-  }, [location.pathname]);
+    setUiContextState((prev) => ({
+      ...prev,
+      current_route: location.pathname,
+      is_authenticated: !!user,
+      current_user: user?.username || null,
+    }));
+  }, [location.pathname, user]);
 
   const updateUiContext = useCallback((keyOrUpdater, maybeValue) => {
     setUiContextState((prev) => {
@@ -155,14 +162,63 @@ export function AgentProvider({ children }) {
       risk_level: 'SAFE',
       handler: () => navigate('/dashboard')
     });
+    const unregLogin = registerAction({
+      id: 'user_login',
+      feature_name: 'Sign In to YelpCamp',
+      description: 'Navigate to the secure sign-in login portal with email or Google',
+      risk_level: 'SAFE',
+      handler: () => navigate('/login')
+    });
+    const unregLoginAlias = registerAction({
+      id: 'navigate_login',
+      feature_name: 'Sign In to YelpCamp',
+      description: 'Navigate to the sign-in login portal',
+      risk_level: 'SAFE',
+      handler: () => navigate('/login')
+    });
+    const unregRegister = registerAction({
+      id: 'user_register',
+      feature_name: 'Join YelpCamp / Create Account',
+      description: 'Navigate to the registration page to create a new scout profile',
+      risk_level: 'SAFE',
+      handler: () => navigate('/register')
+    });
+    const unregRegisterAlias = registerAction({
+      id: 'navigate_register',
+      feature_name: 'Join YelpCamp / Create Account',
+      description: 'Navigate to the registration page',
+      risk_level: 'SAFE',
+      handler: () => navigate('/register')
+    });
 
     return () => {
       unregHome();
       unregExplore();
       unregNew();
       unregDash();
+      unregLogin();
+      unregLoginAlias();
+      unregRegister();
+      unregRegisterAlias();
     };
   }, [navigate, registerAction]);
+
+  // Register user_logout action (gated behind HITL MUTATE confirmation)
+  useEffect(() => {
+    if (user) {
+      const unregLogout = registerAction({
+        id: 'user_logout',
+        feature_name: 'Log out of YelpCamp',
+        description: 'Terminate your active user session and log out of YelpCamp on this device. (Requires user confirmation)',
+        risk_level: 'MUTATE',
+        handler: async () => {
+          await logout();
+          navigate('/');
+        }
+      });
+      return () => unregLogout();
+    }
+  }, [user, logout, navigate, registerAction]);
 
   // 4. Driver.js Spotlight with Automatic Cross-Route Navigation
   const activeDriverRef = useRef(null);

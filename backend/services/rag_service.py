@@ -79,12 +79,17 @@ class RAGService:
             "1. Respond ONLY with a valid JSON object matching this schema:\n"
             "{\n"
             '  "reply": "Warm, concise conversational response. When citing a campsite, use [Campground: <Name>](campground:<id>). Do not use bullet emojis.",\n'
-            '  "trigger_action_id": "Exact id from Available Actions if the user asks to trigger it (e.g. open_share_modal, populate_campground_form), or null",\n'
+            '  "trigger_action_id": "Exact id from Available Actions if the user asks to trigger it (e.g. user_logout, user_login, add_campsite, open_share_modal), or null",\n'
             '  "action_args": "Object with arguments for the triggered action, or null",\n'
             '  "ui_highlight": "Object {route, dom_selector, feature_name, description} if user asks where a button is or UI navigation matches, or null"\n'
             "}\n"
-            "2. Never make up DOM selectors or action IDs that are not provided in the prompt.\n"
-            "3. If no frontend action is requested, set trigger_action_id to null."
+            "2. If the user asks to log out, sign out, or exit their account:\n"
+            "   - If 'user_logout' is in Available Actions, set trigger_action_id to 'user_logout', and inform them a confirmation prompt has been opened.\n"
+            "   - If the user is already signed out, inform them gently.\n"
+            "3. If the user asks to log in, sign in, or create an account:\n"
+            "   - Set trigger_action_id to 'user_login' or 'navigate_login' (or 'user_register') and highlight the button.\n"
+            "4. Never make up DOM selectors or action IDs that are not provided in the prompt.\n"
+            "5. If no frontend action is requested, set trigger_action_id to null."
         )
 
         client = multimodal_embedder.client
@@ -136,28 +141,44 @@ class RAGService:
 
             # Heuristic match against available actions
             msg_lower = user_message.lower()
-            for act in available_actions:
-                act_id = act.get("id", "")
-                if act_id and act_id.lower().replace("_", " ") in msg_lower:
-                    matched_action_id = act_id
-                    break
-
-            if ui_nav_target:
-                fallback_text = (
-                    f"You can find the {ui_nav_target['feature_name']} on your screen. "
-                    f"{ui_nav_target['description']}"
-                )
-            elif campsite_results:
-                top = campsite_results[0]
-                fallback_text = (
-                    f"Based on your trail inquiry, I recommend exploring [Campground: {top['name']}](campground:{top['id']}) "
-                    f"at ${top['price']}/night ({top['location']}). {top['description'][:100]}..."
-                )
+            if any(w in msg_lower for w in ["log out", "logout", "sign out", "signout", "log me out", "sign me out"]):
+                for act in available_actions:
+                    if act.get("id") == "user_logout":
+                        matched_action_id = "user_logout"
+                        fallback_text = "I've initiated the logout sequence. Please confirm via the action card above."
+                        break
+                if not matched_action_id and ui_context and not ui_context.get("is_authenticated", True):
+                    fallback_text = "You are currently signed out of YelpCamp."
+            elif any(w in msg_lower for w in ["log in", "login", "sign in", "signin", "sing in", "log me in", "sign me in"]):
+                for act in available_actions:
+                    if act.get("id") in ["user_login", "navigate_login"]:
+                        matched_action_id = act.get("id")
+                        fallback_text = "Taking you to the sign-in portal."
+                        break
             else:
-                fallback_text = (
-                    "I'm here to guide your wilderness adventures. You can ask me to search for serene campsites, "
-                    "or help you share properties and post visitor moments!"
-                )
+                for act in available_actions:
+                    act_id = act.get("id", "")
+                    if act_id and act_id.lower().replace("_", " ") in msg_lower:
+                        matched_action_id = act_id
+                        break
+
+            if not fallback_text:
+                if ui_nav_target:
+                    fallback_text = (
+                        f"You can find the {ui_nav_target['feature_name']} on your screen. "
+                        f"{ui_nav_target['description']}"
+                    )
+                elif campsite_results:
+                    top = campsite_results[0]
+                    fallback_text = (
+                        f"Based on your trail inquiry, I recommend exploring [Campground: {top['name']}](campground:{top['id']}) "
+                        f"at ${top['price']}/night ({top['location']}). {top['description'][:100]}..."
+                    )
+                else:
+                    fallback_text = (
+                        "I'm here to guide your wilderness adventures. You can ask me to search for serene campsites, "
+                        "or help you share properties and post visitor moments!"
+                    )
 
             reply_json = {
                 "reply": fallback_text,

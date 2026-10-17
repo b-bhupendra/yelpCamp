@@ -414,7 +414,29 @@ class VectorStoreService:
                 "feature_name": "Read & Post Reviews",
                 "route": "/campgrounds",
                 "dom_selector": "#comments-section",
-                "description": "Explore community field reports, safety notices, and verified camper star ratings."
+                "description": "Explore community field reports, safety notices, and verified camper star ratings.",
+                "risk_level": "SAFE"
+            }),
+            (["log out", "logout", "sign out", "signout", "log me out", "sign me out", "disconnect"], {
+                "feature_name": "Log Out",
+                "route": "/campgrounds",
+                "dom_selector": "#nav-logout-btn",
+                "description": "Terminate the active user session and sign out of YelpCamp.",
+                "risk_level": "MUTATE"
+            }),
+            (["log in", "login", "sign in", "signin", "sing in", "log me in", "sign me in", "authenticate"], {
+                "feature_name": "Sign In",
+                "route": "/login",
+                "dom_selector": "#nav-login",
+                "description": "Navigate to the sign-in login portal with email or Google authentication.",
+                "risk_level": "SAFE"
+            }),
+            (["register", "sign up", "signup", "create account", "join"], {
+                "feature_name": "Join YelpCamp",
+                "route": "/register",
+                "dom_selector": "#nav-register",
+                "description": "Create a new wilderness explorer account on YelpCamp.",
+                "risk_level": "SAFE"
             }),
         ]
         for keywords, target in keyword_targets:
@@ -494,7 +516,10 @@ class VectorStoreService:
             ("share_property", "Share Campsite", "/campgrounds", "#btn-share-property", "Open the one-click share suite to copy direct link, share on WhatsApp, or generate dynamic QR code."),
             ("add_campsite", "Host New Campsite", "/campgrounds/new", "#btn-new-campground", "Create and list a new campground with multi-image gallery, amenities, and house rules."),
             ("explore_campsites", "Explore Trails & Campsites", "/campgrounds", "#nav-explore", "Browse all curated campsites with pricing, rating filters, and location tags."),
-            ("campsite_reviews", "Read & Post Reviews", "/campgrounds", "#reviews-section", "Read traveler experiences and leave a rating or reply to guest tips.")
+            ("campsite_reviews", "Read & Post Reviews", "/campgrounds", "#reviews-section", "Read traveler experiences and leave a rating or reply to guest tips."),
+            ("user_login", "Sign In", "/login", "#nav-login", "Navigate to the sign-in login portal with email or Google authentication."),
+            ("user_logout", "Log Out", "/campgrounds", "#nav-logout-btn", "Terminate the active user session and sign out of YelpCamp on this device."),
+            ("user_register", "Join YelpCamp", "/register", "#nav-register", "Create a new wilderness explorer account on YelpCamp.")
         ]
 
         for act_id, name, route, sel, desc in items:
