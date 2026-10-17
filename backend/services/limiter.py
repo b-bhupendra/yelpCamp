@@ -64,12 +64,16 @@ def get_rate_limit_key(request: Request) -> str:
     return f"ip:{client_ip}"
 
 # Initialize the global Limiter instance
+# headers_enabled is set to False because FastAPI endpoints return dicts/Pydantic models,
+# not raw Starlette Response instances. Setting this to True causes SlowAPI's wrapper to crash
+# with 'parameter `response` must be an instance of starlette.responses.Response'.
+# RateLimitExceeded handler still attaches Retry-After headers to 429 responses.
 limiter = Limiter(
     key_func=get_rate_limit_key,
     default_limits=[settings.RATE_LIMIT_DEFAULT] if settings.RATE_LIMIT_DEFAULT else None,
     storage_uri=settings.REDIS_URL or "memory://",
     enabled=settings.RATE_LIMIT_ENABLED,
-    headers_enabled=True,
+    headers_enabled=False,
 )
 
 async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
