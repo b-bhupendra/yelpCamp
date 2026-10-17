@@ -440,7 +440,8 @@ class VectorStoreService:
                         "feature_name": row_dict.get("feature_name", ""),
                         "route": row_dict.get("route", ""),
                         "dom_selector": row_dict.get("dom_selector", ""),
-                        "description": row_dict.get("description", "")
+                        "description": row_dict.get("description", ""),
+                        "risk_level": row_dict.get("risk_level", "SAFE")
                     }
             except Exception as e:
                 logger.debug(f"Turso UI nav lookup notice: {e}")
@@ -477,7 +478,8 @@ class VectorStoreService:
                 "feature_name": best_match.get("feature_name", ""),
                 "route": best_match.get("route", ""),
                 "dom_selector": best_match.get("dom_selector", ""),
-                "description": best_match.get("description", "")
+                "description": best_match.get("description", ""),
+                "risk_level": best_match.get("risk_level", "SAFE")
             }
 
         return None

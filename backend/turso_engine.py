@@ -280,9 +280,11 @@ def init_turso_schema_and_fts():
             feature_name TEXT NOT NULL,
             route TEXT NOT NULL,
             dom_selector TEXT NOT NULL,
-            description TEXT NOT NULL
+            description TEXT NOT NULL,
+            risk_level TEXT DEFAULT 'SAFE'
         )
-        """, "create_ui_navigation")
+        """, "create_ui_navigation"),
+        ("ALTER TABLE ui_navigation ADD COLUMN risk_level TEXT DEFAULT 'SAFE'", "ui_navigation.risk_level"),
     ]
 
     # Apply to local SQLite database if database.db exists

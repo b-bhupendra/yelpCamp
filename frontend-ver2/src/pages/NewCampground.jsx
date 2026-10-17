@@ -6,6 +6,7 @@ import AmbientAtmosphere from '../components/AmbientAtmosphere';
 import Magnetic from '../components/Magnetic';
 import Icon from '../components/Icons';
 import { useAgentAction } from '../hooks/useAgentAction';
+import { useAgentFormSync } from '../hooks/useAgentFormSync';
 import { handleImageError } from '../utils/imageFallback';
 
 const AVAILABLE_AMENITIES = [
@@ -48,37 +49,6 @@ export default function NewCampground() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
-
-  // Register Agent Action for AI Assistant autofill
-  useAgentAction({
-    id: 'populate_campground_form',
-    description: 'Auto-populates the new campsite creation form with provided parameters',
-    parameters: {
-      type: 'object',
-      properties: {
-        title: { type: 'string', description: 'Name of the campsite' },
-        price: { type: 'string', description: 'Price per night in USD' },
-        location: { type: 'string', description: 'Location address or region' },
-        description: { type: 'string', description: 'Terrain description' },
-        amenities: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'List of amenities (e.g. campfire, wifi, potable_water)',
-        },
-      },
-    },
-    handler: (args) => {
-      if (args.title) setTitle(args.title);
-      if (args.price) setPrice(String(args.price));
-      if (args.location) setLocationAddress(args.location);
-      if (args.description) setDescription(args.description);
-      if (args.amenities && Array.isArray(args.amenities)) {
-        setSelectedAmenities(args.amenities);
-      }
-      return { status: 'populated', fields: args };
-    },
-  });
-
   const toggleAmenity = (id) => {
     setSelectedAmenities((prev) =>
       prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
@@ -102,7 +72,7 @@ export default function NewCampground() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     setSubmitting(true);
     setError('');
 
@@ -138,6 +108,63 @@ export default function NewCampground() {
       setSubmitting(false);
     }
   };
+
+  // Helper to auto-fill form state from AI recommendations
+  const handleAutoFillForm = (args) => {
+    if (!args) return;
+    if (args.title) setTitle(args.title);
+    if (args.price !== undefined) setPrice(String(args.price));
+    if (args.location || args.locationAddress) setLocationAddress(args.location || args.locationAddress);
+    if (args.description) setDescription(args.description);
+    if (args.amenities && Array.isArray(args.amenities)) {
+      setSelectedAmenities(args.amenities);
+    }
+    toast.success('Form draft populated by AI Co-Pilot!');
+    return { status: 'populated', fields: args };
+  };
+
+  // 1. One-line Universal AI Form Sync hook
+  useAgentFormSync({
+    formId: 'campground_listing',
+    formDescription: 'Auto-fills the Host New Campground form with title, price, location, description, and amenities',
+    values: { title, price, location: locationAddress, description, amenities: selectedAmenities },
+    setValues: handleAutoFillForm,
+    schemaProperties: {
+      title: { type: 'string' },
+      price: { type: 'number' },
+      location: { type: 'string' },
+      description: { type: 'string' },
+      amenities: { type: 'array', items: { type: 'string' } },
+    },
+    onSubmit: () => handleSubmit()
+  });
+
+  // 2. Direct action bindings for add_campsite and populate_campground_form
+  useAgentAction({
+    id: 'add_campsite',
+    description: 'Auto-populates the new campsite creation form with provided parameters',
+    parameters: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Name of the campsite' },
+        price: { type: 'string', description: 'Price per night in USD' },
+        location: { type: 'string', description: 'Location address or region' },
+        description: { type: 'string', description: 'Terrain description' },
+        amenities: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'List of amenities (e.g. campfire, wifi, potable_water)',
+        },
+      },
+    },
+    handler: handleAutoFillForm,
+  });
+
+  useAgentAction({
+    id: 'populate_campground_form',
+    description: 'Auto-populates the new campsite creation form with provided parameters',
+    handler: handleAutoFillForm,
+  });
 
   const fieldClass =
     'w-full px-5 py-3.5 bg-surface border border-border rounded-2xl text-xs sm:text-sm text-fg focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 transition-all placeholder:text-fg-subtle';

@@ -141,6 +141,7 @@ export default function CampgroundList() {
 
           <Magnetic strength={0.2}>
             <Link
+              id="btn-new-campground"
               to="/campgrounds/new"
               className="cursor-pointer inline-flex items-center gap-2.5 px-8 py-4 bg-primary text-on-primary rounded-full font-bold text-xs uppercase tracking-[0.16em] transition-transform duration-200 hover:scale-[1.04] active:scale-95"
             >

@@ -14,7 +14,14 @@ const INITIAL_GREETING = {
 };
 
 export function useAgentChat() {
-  const { uiContext, registeredActions, executeAction, highlightElement } = useAgent();
+  const {
+    uiContext,
+    registeredActions,
+    executeAgentAction,
+    executeAction,
+    highlightElement,
+    getCurrentSnapshot,
+  } = useAgent();
   const [messages, setMessages] = useState([INITIAL_GREETING]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -34,12 +41,22 @@ export function useAgentChat() {
     setIsLoading(true);
     setError(null);
 
-    // Build capabilities snapshot
-    const activeActionsList = Object.values(registeredActions).map((act) => ({
-      id: act.id,
-      description: act.description,
-      parameters: act.parameters || {}
-    }));
+    // Build unified capabilities snapshot (Mounted actions + unmounted manifest actions)
+    let activeActionsList = [];
+    let currentUi = uiContext;
+
+    if (typeof getCurrentSnapshot === 'function') {
+      const snap = getCurrentSnapshot();
+      activeActionsList = snap.availableActions || [];
+      currentUi = snap.uiContext || uiContext;
+    } else {
+      activeActionsList = Object.values(registeredActions || {}).map((act) => ({
+        id: act.id,
+        description: act.description,
+        parameters: act.parameters || {},
+        risk_level: act.risk_level || 'SAFE'
+      }));
+    }
 
     const historyPayload = messages.slice(-6).map((m) => ({
       role: m.role === 'model' ? 'model' : 'user',
@@ -49,7 +66,7 @@ export function useAgentChat() {
     try {
       const res = await api.post('/api/agent/interact', {
         user_message: text,
-        ui_context: uiContext,
+        ui_context: currentUi,
         available_actions: activeActionsList,
         chat_history: historyPayload
       });
@@ -73,7 +90,10 @@ export function useAgentChat() {
       // 1. Dispatch in-app action if directed
       if (data.trigger_action_id) {
         console.info(`[Agent] Executing triggered action: ${data.trigger_action_id}`);
-        executeAction(data.trigger_action_id, data.action_args);
+        const runAction = executeAgentAction || executeAction;
+        if (typeof runAction === 'function') {
+          runAction(data.trigger_action_id, data.action_args);
+        }
       }
 
       // 2. Trigger Driver.js spotlight if directed

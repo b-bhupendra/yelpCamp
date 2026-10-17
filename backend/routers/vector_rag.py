@@ -90,6 +90,88 @@ async def interact_with_aurora_agent(request: Request, req: AgentInteractRequest
         logger.error(f"Error during agent interaction: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+class UINavItem(BaseModel):
+    id: str
+    feature_name: str
+    route: str
+    dom_selector: str
+    description: str
+    risk_level: Optional[str] = "SAFE"
+    parameters: Optional[Dict[str, Any]] = None
+
+class UINavSyncRequest(BaseModel):
+    items: List[UINavItem]
+
+@agent_router.post("/sync-ui")
+@router.post("/sync-ui")
+@limiter.limit("15/minute")
+def sync_ui_navigation_manifest(request: Request, payload: UINavSyncRequest):
+    """
+    Zero-config FDE endpoint: receives the frontend's UI_CAPABILITY_MANIFEST,
+    batch-embeds all feature descriptions with 768-d vectors, and upserts them
+    into Turso Cloud (ui_navigation) and the in-memory VectorStore cache.
+    """
+    import sqlite3
+    import json
+    from turso_engine import execute_turso_raw
+
+    if not payload.items:
+        return {"status": "noop", "synced": 0}
+
+    texts = [f"{item.feature_name}: {item.description}" for item in payload.items]
+    embeddings = multimodal_embedder.embed_batch(texts)
+
+    # 1. Update in-memory cache immediately
+    for item, vec in zip(payload.items, embeddings):
+        vector_store._ui_nav_cache[item.id] = {
+            "feature_name": item.feature_name,
+            "route": item.route,
+            "dom_selector": item.dom_selector,
+            "description": item.description,
+            "risk_level": item.risk_level or "SAFE",
+            "parameters": item.parameters or {},
+            "embedding": vec,
+        }
+
+    # 2. Upsert into Local SQLite
+    try:
+        con = sqlite3.connect("database.db")
+        cur = con.cursor()
+        for item in payload.items:
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO ui_navigation (id, feature_name, route, dom_selector, description)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (item.id, item.feature_name, item.route, item.dom_selector, item.description),
+            )
+        con.commit()
+        con.close()
+    except Exception as e:
+        logger.debug(f"Local SQLite UI sync notice: {e}")
+
+    # 3. Upsert into Turso Cloud with DiskANN vector32()
+    if settings.USE_TURSO and settings.TURSO_AUTH_TOKEN:
+        for item, vec in zip(payload.items, embeddings):
+            try:
+                execute_turso_raw(
+                    """
+                    INSERT INTO ui_navigation (id, feature_name, route, dom_selector, description, embedding)
+                    VALUES (?, ?, ?, ?, ?, vector32(?))
+                    ON CONFLICT(id) DO UPDATE SET
+                        feature_name = excluded.feature_name,
+                        route = excluded.route,
+                        dom_selector = excluded.dom_selector,
+                        description = excluded.description,
+                        embedding = excluded.embedding
+                    """,
+                    [item.id, item.feature_name, item.route, item.dom_selector, item.description, json.dumps(vec)],
+                )
+            except Exception as e:
+                logger.warning(f"Turso UI sync notice for {item.id}: {e}")
+
+    return {"status": "synced", "synced_count": len(payload.items)}
+
 @router.get("/status")
 def get_rag_status(session: Session = Depends(get_session)):
     """Check health, index status, and Gemini API readiness."""

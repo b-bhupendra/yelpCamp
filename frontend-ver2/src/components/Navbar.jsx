@@ -25,10 +25,11 @@ export default function Navbar() {
     navigate('/');
   };
 
-  const navLink = (to, label) => {
+  const navLink = (to, label, id) => {
     const active = location.pathname === to;
     return (
       <Link
+        id={id}
         to={to}
         className={`cursor-pointer text-xs font-semibold uppercase tracking-[0.18em] transition-colors duration-200 ${
           active ? 'text-fg' : 'text-fg-muted hover:text-fg'
@@ -72,8 +73,8 @@ export default function Navbar() {
           </svg>
           <span>AI Search</span>
         </button>
-        {navLink('/campgrounds', 'Explore')}
-        {user && navLink('/dashboard', 'Dashboard')}
+        {navLink('/campgrounds', 'Explore', 'nav-explore')}
+        {user && navLink('/dashboard', 'Dashboard', 'nav-dashboard')}
 
         {user ? (
           <div className="flex items-center gap-5">

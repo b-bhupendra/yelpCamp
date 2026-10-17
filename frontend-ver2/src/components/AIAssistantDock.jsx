@@ -132,7 +132,7 @@ function FormattedMessage({ content, onNavigateCampground }) {
 export default function AIAssistantDock() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { uiContext, registeredActions, highlightElement } = useAgent();
+  const { uiContext, registeredActions, highlightElement, pendingApproval } = useAgent();
   const { messages, isLoading, sendMessage } = useAgentChat();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -445,6 +445,51 @@ export default function AIAssistantDock() {
                   </button>
                 ))}
               </div>
+
+              {/* ── HUMAN-IN-THE-LOOP (HITL) GOVERNANCE CONFIRMATION CARD ── */}
+              {pendingApproval && (
+                <div
+                  role="alertdialog"
+                  aria-labelledby="hitl-title"
+                  className="mx-3 mb-2 p-3.5 rounded-xl bg-amber-500/10 border border-amber-400/40 shadow-lg backdrop-blur-md animate-in fade-in slide-in-from-bottom-2"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span id="hitl-title" className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                      <ZapIcon className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Confirm Agent Action</span>
+                    </span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-200">
+                      HITL Gate
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-fg/90 font-medium mb-1">{pendingApproval.title}</p>
+                  <p className="text-[11px] text-fg-subtle mb-2.5">{pendingApproval.description}</p>
+
+                  {pendingApproval.args && Object.keys(pendingApproval.args).length > 0 && (
+                    <pre className="text-[10px] font-mono bg-background/80 p-2 rounded-lg border border-border/50 text-sky-300 overflow-x-auto mb-2.5 max-h-24">
+                      {JSON.stringify(pendingApproval.args, null, 2)}
+                    </pre>
+                  )}
+
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={pendingApproval.onCancel}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-2 hover:bg-surface-3 text-fg-subtle hover:text-fg transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={pendingApproval.onConfirm}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-colors cursor-pointer"
+                    >
+                      Approve & Execute
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Chat Input Bar */}
               <form onSubmit={handleSendChat} className="p-3 border-t border-border/40 bg-surface/40">
