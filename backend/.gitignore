@@ -7,6 +7,5 @@ database.db-shm
 database.db-wal
 uploads/
 .vercel
-
-.vercel
 .env*
+!.env.example

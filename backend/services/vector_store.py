@@ -69,13 +69,25 @@ class CrossEncoderService:
             matched_pos = sum(1 for t in q_tokens if t not in stop_words and t not in negation_cues and bool(re.search(rf"\b{re.escape(t)}\b", text)))
             pos_ratio = matched_pos / max(len(q_tokens) - len(negated_terms), 1)
 
-            # Heavy penalty if candidate contains words explicitly negated by user as full words
-            violates_negation = any(bool(re.search(rf"\b{re.escape(neg)}\b", text)) for neg in negated_terms)
+            # Analyze user negations vs candidate text
+            violates_negation = False
+            satisfies_negation = False
+
+            for neg in negated_terms:
+                if bool(re.search(rf"\b{re.escape(neg)}\b", text)):
+                    # Check if candidate explicitly denies / prohibits this term (e.g. "no pets", "zero electricity", "strictly silent")
+                    is_prohibited_in_doc = bool(re.search(rf"\b(?:no|zero|without|strictly no|non|never)\s+(?:\w+\s+)?{re.escape(neg)}\b", text))
+                    if is_prohibited_in_doc:
+                        satisfies_negation = True
+                    else:
+                        violates_negation = True
+                        break
+
             if violates_negation:
                 final_score = 0.04
             else:
-                quiet_boost = 0.20 if (negated_terms and any(w in text for w in ["quiet", "peaceful", "silent", "tranquil", "serene", "chill"])) else 0.0
-                final_score = min(0.98, max(0.28, (base_score * 0.55) + (pos_ratio * 0.35) + quiet_boost))
+                neg_match_boost = 0.35 if satisfies_negation else (0.15 if (negated_terms and any(w in text for w in ["quiet", "peaceful", "silent", "tranquil", "serene", "chill"])) else 0.0)
+                final_score = min(0.99, max(0.28, (base_score * 0.40) + (pos_ratio * 0.40) + neg_match_boost))
 
             p_copy = dict(p)
             p_copy["score"] = round(final_score, 4)
