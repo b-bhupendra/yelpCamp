@@ -11,6 +11,7 @@ __pycache__/
 */__pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
 
 # SQLite DB
 *.db
@@ -25,12 +26,23 @@ dist/
 .parcel-cache/
 .eslintcache
 
-# Environment variables
+# Environment variables & secrets
+.env
+.env*
+*.env*
 .env.local
 .env.*.local
 
-# Large zip archives
+# Vercel
+.vercel/
+*/.vercel/
+
+# Uploads & legacy archives
+archive/
+uploads/
 *.zip
+*.pdf
+yelpcamp_llm_codebase.*
 
 # System & IDE
 .DS_Store

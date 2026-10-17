@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext';
 import AmbientAtmosphere from '../components/AmbientAtmosphere';
 import Magnetic from '../components/Magnetic';
 import Icon from '../components/Icons';
+import { handleImageError } from '../utils/imageFallback';
 
 const AVAILABLE_AMENITIES = [
   { id: 'tent_pitches', label: 'Tent Pitches', icon: Icon.Tent },
@@ -289,6 +290,7 @@ export default function EditCampground() {
                   <img
                     src={formData.image}
                     alt="Cover preview"
+                    onError={(e) => handleImageError(e, 'campground', 'cover_preview')}
                     className="w-full h-full object-cover"
                   />
                   <span className="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-black/70 text-secondary text-[10px] font-bold uppercase tracking-wider backdrop-blur-md">
@@ -347,6 +349,7 @@ export default function EditCampground() {
                         <img
                           src={img}
                           alt={`Gallery ${i + 1}`}
+                          onError={(e) => handleImageError(e, 'campground', i)}
                           className="w-full h-full object-cover"
                         />
                         <button

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Icon from './Icons';
 import { useAgentAction } from '../hooks/useAgentAction';
+import { handleImageError } from '../utils/imageFallback';
 
 export default function SharePropertyModal({
   isOpen,
@@ -102,6 +103,7 @@ export default function SharePropertyModal({
               <img
                 src={campground.image || "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&q=80&w=300"}
                 alt={campTitle}
+                onError={(e) => handleImageError(e, 'campground', campground?.id)}
                 className="w-full h-full object-cover"
               />
             </div>

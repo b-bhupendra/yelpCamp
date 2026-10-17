@@ -2,6 +2,7 @@ import React from 'react';
 import Icon from './Icons';
 import ScrollReveal from './ScrollReveal';
 import StoryBar from './stories/StoryBar';
+import { handleImageError } from '../utils/imageFallback';
 
 const STORIES = [
 
@@ -98,6 +99,7 @@ export default function CamperStories() {
               <img
                 src={story.avatar}
                 alt={story.author}
+                onError={(e) => handleImageError(e, 'avatar', story.author)}
                 className="w-11 h-11 rounded-full object-cover border border-border-strong group-hover:border-secondary transition-colors"
               />
               <div className="min-w-0">

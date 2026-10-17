@@ -125,6 +125,10 @@ export default function StoryBar({
                 <img
                   src={user.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${user.username}`}
                   alt="Your avatar"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = `https://api.dicebear.com/7.x/adventurer/svg?seed=${user.username || 'camper'}`;
+                  }}
                   className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
                 />
               ) : null}

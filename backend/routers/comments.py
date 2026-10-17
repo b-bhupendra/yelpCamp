@@ -1,5 +1,5 @@
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session, select, func
 
 from models import Comment, Campground, User
@@ -7,6 +7,7 @@ from database import get_session
 from dependencies import is_logged_in, check_comment_author
 from schemas import CommentCreate, CommentOut
 from services.cloudinary_service import get_user_avatar_url
+from services.limiter import limiter
 
 router = APIRouter(tags=["comments"])
 
@@ -54,8 +55,10 @@ async def get_comments(
     return build_comment_tree(campground.comments)
 
 @router.post("/", response_model=CommentOut, status_code=201)
+@limiter.limit("15/minute")
 async def create_comment(
     id: int,
+    request: Request,
     data: CommentCreate,
     db: Session = Depends(get_session),
     current_user: User = Depends(is_logged_in)

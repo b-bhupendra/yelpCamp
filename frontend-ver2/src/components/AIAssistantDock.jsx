@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../api';
 import { useAgent } from '../context/AgentContext';
 import { useAgentChat } from '../hooks/useAgentChat';
+import { handleImageError } from '../utils/imageFallback';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    SVG ICONS (Clean, modern, crisp — zero emojis per UI/UX Pro Max)
@@ -392,6 +393,7 @@ export default function AIAssistantDock() {
                             <img
                               src={c.image}
                               alt={c.name}
+                              onError={(e) => handleImageError(e, 'campground', c.id)}
                               className="w-14 h-14 rounded-lg object-cover shrink-0 bg-surface-3"
                               loading="lazy"
                             />
@@ -532,6 +534,7 @@ export default function AIAssistantDock() {
                     <img
                       src={item.image}
                       alt={item.name}
+                      onError={(e) => handleImageError(e, 'campground', item.id)}
                       className="w-20 h-20 rounded-lg object-cover shrink-0 bg-surface-3 group-hover:scale-[1.02] transition-transform"
                       loading="lazy"
                     />

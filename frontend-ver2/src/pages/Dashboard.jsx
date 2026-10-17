@@ -6,6 +6,7 @@ import api from '../api';
 import Magnetic from '../components/Magnetic';
 import Icon from '../components/Icons';
 import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
+import { handleImageError } from '../utils/imageFallback';
 
 /**
  * DASHBOARD — a calm, high-contrast command centre for wishlists,
@@ -262,10 +263,7 @@ export default function Dashboard() {
                         className="w-full h-full object-cover"
                         alt={camp.title || camp.name}
                         loading="lazy"
-                        onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=200";
-                        }}
+                        onError={(e) => handleImageError(e, 'campground', camp.id)}
                       />
                     </div>
                     <div className="min-w-0 space-y-1">
@@ -355,6 +353,7 @@ export default function Dashboard() {
                       className="w-full h-full object-cover"
                       alt={item.name}
                       loading="lazy"
+                      onError={(e) => handleImageError(e, 'campground', item.id)}
                     />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -391,6 +390,7 @@ export default function Dashboard() {
                       className="w-full h-full object-cover"
                       alt={moment.caption || 'Moment'}
                       loading="lazy"
+                      onError={(e) => handleImageError(e, 'story', moment.id)}
                     />
                   </div>
                   <div className="flex-1 min-w-0 space-y-1">

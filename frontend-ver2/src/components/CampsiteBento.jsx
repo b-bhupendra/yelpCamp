@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Icon from './Icons';
 import ScrollReveal from './ScrollReveal';
+import { handleImageError } from '../utils/imageFallback';
 
 /**
  * CAMPSITE BENTO — Guided showcase of campsites with category filtering.
@@ -115,7 +116,7 @@ function CampsiteCard({ camp, index, delay, visible, cardRef }) {
           src={camp.img}
           alt={`${camp.name} campsite`}
           loading="lazy"
-          onError={(e) => { e.currentTarget.style.opacity = '0'; }}
+          onError={(e) => handleImageError(e, 'campground', camp.id)}
           className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-108"
         />
       </div>

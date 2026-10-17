@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlmodel import Session, select
 from models import Vote, Campground, User, Wishlist, CheckIn, Trip, TripMember
 from database import get_session
@@ -10,12 +10,16 @@ from schemas import (
     CheckInCreate, CheckInOut, TripCreate, TripOut, TripMemberAdd
 )
 from services.cloudinary_service import get_user_avatar_url
+from services.limiter import limiter
+from config import settings
 
 router = APIRouter(tags=["social"])
 
 @router.post("/campgrounds/{id}/vote", response_model=VoteResponse)
+@limiter.limit(settings.RATE_LIMIT_SOCIAL_ACTION)
 async def toggle_vote(
     id: int,
+    request: Request,
     vote_type: int = Query(..., description="1 for like, -1 for dislike"),
     db: Session = Depends(get_session),
     current_user: User = Depends(is_logged_in)
@@ -73,8 +77,10 @@ async def get_stats(id: int, db: Session = Depends(get_session)):
     return {"likes": likes, "dislikes": dislikes}
 
 @router.post("/campgrounds/{id}/wishlist", response_model=WishlistToggleResponse)
+@limiter.limit(settings.RATE_LIMIT_SOCIAL_ACTION)
 async def toggle_wishlist(
     id: int,
+    request: Request,
     db: Session = Depends(get_session),
     current_user: User = Depends(is_logged_in)
 ):
@@ -163,8 +169,10 @@ async def get_my_dashboard(
     }
 
 @router.post("/campgrounds/{id}/checkin", response_model=CheckInOut)
+@limiter.limit("20/minute")
 async def add_checkin(
     id: int,
+    request: Request,
     data: Optional[CheckInCreate] = None,
     db: Session = Depends(get_session),
     current_user: User = Depends(is_logged_in)

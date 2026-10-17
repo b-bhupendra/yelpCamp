@@ -11,6 +11,7 @@ from schemas import UserCreate, UserLogin, UserOut, GoogleLoginRequest
 from config import settings
 from services.cloudinary_service import get_user_avatar_url, upload_user_avatar
 from services.google_auth_service import verify_google_token
+from services.limiter import limiter
 
 router = APIRouter(tags=["authentication"])
 
@@ -30,6 +31,7 @@ async def register_page():
     return {"message": "Register endpoint. Send POST request with username and password."}
 
 @router.post("/register")
+@limiter.limit(settings.RATE_LIMIT_AUTH_REGISTER)
 async def register(
     request: Request,
     response: Response,
@@ -77,7 +79,9 @@ async def register(
     }
 
 @router.post("/login")
+@limiter.limit(settings.RATE_LIMIT_AUTH_LOGIN)
 async def login(
+    request: Request,
     response: Response,
     user_data: Optional[UserLogin] = None,
     username: Optional[str] = Form(None),
@@ -108,6 +112,7 @@ async def login(
 
 @router.post("/auth/google")
 @router.post("/google")
+@limiter.limit("10/minute")
 async def google_auth(
     request: Request,
     response: Response,
@@ -217,7 +222,9 @@ async def get_user_by_id(user_id: int, db: Session = Depends(get_session)):
 
 @router.post("/me/avatar")
 @router.post("/users/me/avatar")
+@limiter.limit("10/minute")
 async def update_avatar(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(is_logged_in),
     db: Session = Depends(get_session)

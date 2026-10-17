@@ -8,6 +8,9 @@ from fastapi.staticfiles import StaticFiles
 from config import settings
 from database import create_db_and_tables
 from routers import auth, campgrounds, comments, social, vector_rag, visitor_photos
+from services.limiter import limiter, rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,6 +33,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Attach rate limiter to app state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
 # CORS middleware configured for React frontend communication with credentials
 app.add_middleware(
     CORSMiddleware,
@@ -39,6 +46,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# SlowAPI rate limiting middleware (ensures baseline limits across routes)
+app.add_middleware(SlowAPIMiddleware)
 
 # Static file serving for user uploaded images (guarded for serverless)
 upload_dir = settings.UPLOAD_DIR

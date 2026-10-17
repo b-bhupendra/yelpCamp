@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, BackgroundTasks, Request
 from sqlmodel import Session, select, func
 
 from models import Campground, User, Comment
@@ -14,6 +14,8 @@ from schemas import (
 )
 from config import settings
 from services.cloudinary_service import upload_campground_image, get_user_avatar_url
+from services.limiter import limiter
+from services.image_validator import sanitize_campground_image, sanitize_gallery_images
 from routers.comments import build_comment_tree
 
 logger = logging.getLogger(__name__)
@@ -75,15 +77,18 @@ def format_campground_out(campground: Campground) -> Dict[str, Any]:
         for c in (campground.comments or [])
     ]
 
+    safe_image = sanitize_campground_image(campground.image, campground.id)
+    safe_gallery = sanitize_gallery_images(gallery_imgs, campground.id)
+
     return {
         "id": campground.id,
         "title": campground.title or "",
         "price": float(campground.price) if campground.price is not None else 0.0,
-        "image": campground.image or "",
+        "image": safe_image,
         "description": campground.description or "",
         "location": campground.location or "",
         "location_address": campground.location_address or "",
-        "gallery_images": gallery_imgs,
+        "gallery_images": safe_gallery,
         "amenities": amenities_list,
         "rules": rules_dict,
         "avg_rating": campground.avg_rating or 0.0,
@@ -152,7 +157,9 @@ async def list_campgrounds(
     )
 
 @router.post("/upload", response_model=FileUploadResponse)
+@limiter.limit("15/minute")
 async def upload_image(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(is_logged_in)
 ):
@@ -169,7 +176,9 @@ async def upload_image(
     }
 
 @router.post("/", response_model=CampgroundOut, status_code=201)
+@limiter.limit(settings.RATE_LIMIT_CONTENT_CREATE)
 async def create_campground(
+    request: Request,
     data: CampgroundCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_session),
@@ -178,14 +187,17 @@ async def create_campground(
     """Create a new campground with typed JSON schema."""
     from services.multimodal_embedder import process_campground_ingestion
 
+    clean_image = sanitize_campground_image(data.image, None)
+    clean_gallery = sanitize_gallery_images(data.gallery_images, None)
+
     new_campground = Campground(
         title=data.title,
-        image=data.image,
+        image=clean_image,
         price=data.price,
         description=data.description,
         location=data.location or "",
         location_address=data.location_address or "",
-        gallery_images=json.dumps(data.gallery_images) if data.gallery_images else "[]",
+        gallery_images=json.dumps(clean_gallery),
         amenities=json.dumps(data.amenities) if data.amenities else "[]",
         rules=json.dumps(data.rules) if data.rules else "",
         author_id=current_user.id,
@@ -220,7 +232,7 @@ async def update_campground(
     if data.title is not None:
         campground.title = data.title
     if data.image is not None:
-        campground.image = data.image
+        campground.image = sanitize_campground_image(data.image, campground.id)
     if data.price is not None:
         campground.price = data.price
     if data.description is not None:
@@ -230,7 +242,7 @@ async def update_campground(
     if data.location_address is not None:
         campground.location_address = data.location_address
     if data.gallery_images is not None:
-        campground.gallery_images = json.dumps(data.gallery_images)
+        campground.gallery_images = json.dumps(sanitize_gallery_images(data.gallery_images, campground.id))
     if data.amenities is not None:
         campground.amenities = json.dumps(data.amenities)
     if data.rules is not None:

@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import Icon from '../Icons';
 import ThreadedComments from '../comments/ThreadedComments';
+import { handleImageError } from '../../utils/imageFallback';
 
 const SLIDE_DURATION = 5000; // 5 seconds per slide per roadmap
 
@@ -302,6 +303,7 @@ export default function StoryViewerModal({
                     `https://api.dicebear.com/7.x/adventurer/svg?seed=${currentGroup.username}`
                   }
                   alt={currentGroup.username}
+                  onError={(e) => handleImageError(e, 'avatar', currentGroup.username)}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -379,6 +381,7 @@ export default function StoryViewerModal({
           <img
             src={currentPhoto.image_url}
             alt={currentPhoto.caption || 'Camper moment'}
+            onError={(e) => handleImageError(e, 'story', currentPhoto.id)}
             className="w-full h-full object-cover sm:object-contain select-none"
             draggable={false}
           />

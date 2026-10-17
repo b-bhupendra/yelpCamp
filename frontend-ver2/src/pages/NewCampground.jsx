@@ -6,6 +6,7 @@ import AmbientAtmosphere from '../components/AmbientAtmosphere';
 import Magnetic from '../components/Magnetic';
 import Icon from '../components/Icons';
 import { useAgentAction } from '../hooks/useAgentAction';
+import { handleImageError } from '../utils/imageFallback';
 
 const AVAILABLE_AMENITIES = [
   { id: 'tent_pitches', label: 'Tent Pitches', icon: Icon.Tent },
@@ -336,6 +337,7 @@ export default function NewCampground() {
                         <img
                           src={img}
                           alt={`Gallery ${i + 1}`}
+                          onError={(e) => handleImageError(e, 'campground', i)}
                           className="w-full h-full object-cover"
                         />
                         <button

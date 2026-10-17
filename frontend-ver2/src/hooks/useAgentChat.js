@@ -83,14 +83,20 @@ export function useAgentChat() {
       }
     } catch (err) {
       console.error('[Agent Chat Error]', err);
-      setError('Unable to communicate with the trail guide right now.');
+      const isRateLimited = err?.response?.status === 429;
+      const retryAfter = err?.response?.data?.retry_after;
+      const rateLimitMsg = retryAfter
+        ? `You're sending queries a bit too quickly. Please take a breath and try again in ${retryAfter} seconds.`
+        : "You're asking questions faster than the trail guide can respond! Please pause for a few seconds and try again.";
+
+      setError(isRateLimited ? 'Rate limit reached' : 'Unable to communicate with the trail guide right now.');
 
       setMessages((prev) => [
         ...prev,
         {
           id: `err-${Date.now()}`,
           role: 'model',
-          content: "I'm having trouble connecting to the wilderness knowledge base. Please try your question again in a moment.",
+          content: isRateLimited ? rateLimitMsg : "I'm having trouble connecting to the wilderness knowledge base. Please try your question again in a moment.",
           timestamp: new Date().toISOString()
         }
       ]);

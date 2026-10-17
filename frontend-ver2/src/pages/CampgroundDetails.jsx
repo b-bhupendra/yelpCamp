@@ -13,6 +13,7 @@ import StoryBar from '../components/stories/StoryBar';
 import ThreadedComments from '../components/comments/ThreadedComments';
 import SharePropertyModal from '../components/SharePropertyModal';
 import { useAgentAction } from '../hooks/useAgentAction';
+import { handleImageError } from '../utils/imageFallback';
 
 const AMENITY_METADATA = {
   tent_pitches: { label: 'Tent Pitches', icon: Icon.Tent },
@@ -220,6 +221,7 @@ export default function CampgroundDetails() {
                 >
                   <img
                     src={gallery[0]}
+                    onError={(e) => handleImageError(e, 'campground', campground.id)}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     alt={campground.title || campground.name}
                   />
@@ -242,6 +244,7 @@ export default function CampgroundDetails() {
                     <img
                       src={gallery[0]}
                       alt="Campsite hero"
+                      onError={(e) => handleImageError(e, 'campground', campground.id)}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
@@ -262,6 +265,7 @@ export default function CampgroundDetails() {
                       <img
                         src={gallery[1]}
                         alt="Campsite perspective 2"
+                        onError={(e) => handleImageError(e, 'campground', (campground.id || 0) + 1)}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-black/15 group-hover:bg-transparent transition-colors" />
@@ -277,6 +281,7 @@ export default function CampgroundDetails() {
                       <img
                         src={gallery[2]}
                         alt="Campsite perspective 3"
+                        onError={(e) => handleImageError(e, 'campground', (campground.id || 0) + 2)}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-black/15 group-hover:bg-transparent transition-colors" />
@@ -292,6 +297,7 @@ export default function CampgroundDetails() {
                       <img
                         src={gallery[3]}
                         alt="Campsite perspective 4"
+                        onError={(e) => handleImageError(e, 'campground', (campground.id || 0) + 3)}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-black/15 group-hover:bg-transparent transition-colors" />
@@ -307,6 +313,7 @@ export default function CampgroundDetails() {
                       <img
                         src={gallery[4]}
                         alt="Campsite perspective 5"
+                        onError={(e) => handleImageError(e, 'campground', (campground.id || 0) + 4)}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       {gallery.length > 5 ? (
@@ -428,6 +435,7 @@ export default function CampgroundDetails() {
                       <img
                         src={voter.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${voter.username || 'scout_' + i}`}
                         alt="Avatar"
+                        onError={(e) => handleImageError(e, 'avatar', voter.username || i)}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -492,6 +500,7 @@ export default function CampgroundDetails() {
                         `https://api.dicebear.com/7.x/adventurer/svg?seed=${campground.author_username || 'scout'}`
                       }
                       alt={campground.author_username}
+                      onError={(e) => handleImageError(e, 'avatar', campground.author_username)}
                       className="w-full h-full object-cover rounded-xl"
                     />
                   </div>
@@ -600,6 +609,7 @@ export default function CampgroundDetails() {
             <img
               src={gallery[lightboxIndex]}
               alt={`Campsite view ${lightboxIndex + 1}`}
+              onError={(e) => handleImageError(e, 'campground', lightboxIndex)}
               className="max-h-[75vh] max-w-full object-contain rounded-2xl shadow-2xl transition-all duration-300"
             />
 
@@ -629,7 +639,12 @@ export default function CampgroundDetails() {
                       : 'border-white/20 opacity-50 hover:opacity-100'
                   }`}
                 >
-                  <img src={img} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" />
+                  <img
+                    src={img}
+                    alt={`Thumb ${idx + 1}`}
+                    onError={(e) => handleImageError(e, 'campground', idx)}
+                    className="w-full h-full object-cover"
+                  />
                 </button>
               ))}
             </div>

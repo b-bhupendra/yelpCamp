@@ -42,6 +42,17 @@ class Settings(BaseSettings):
     CHAT_MODEL: str = "gemini-3.5-flash"
     VISION_MODEL: str = "gemini-3.5-flash"
     
+    # Rate Limiting Configuration
+    RATE_LIMIT_ENABLED: bool = True
+    REDIS_URL: Optional[str] = None
+    RATE_LIMIT_DEFAULT: str = "120/minute"
+    RATE_LIMIT_AI_INTERACT: str = "15/minute"
+    RATE_LIMIT_AI_CHAT: str = "12/minute"
+    RATE_LIMIT_AI_SEARCH: str = "30/minute"
+    RATE_LIMIT_AUTH_LOGIN: str = "5/minute"
+    RATE_LIMIT_AUTH_REGISTER: str = "3/minute"
+    RATE_LIMIT_CONTENT_CREATE: str = "10/minute"
+    RATE_LIMIT_SOCIAL_ACTION: str = "40/minute"
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -1,6 +1,6 @@
 import logging
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select, func
 from database import get_session
@@ -8,6 +8,7 @@ from models import Campground, CampgroundEmbedding, Comment
 from services.rag_service import rag_service
 from services.multimodal_embedder import multimodal_embedder
 from services.vector_store import vector_store
+from services.limiter import limiter
 from config import settings
 
 from schemas import AgentInteractRequest, AgentInteractResponse
@@ -31,7 +32,8 @@ class ChatRequest(BaseModel):
     conversation_history: Optional[List[ChatMessage]] = Field(default=[])
 
 @router.post("/search")
-def semantic_vector_search(req: SearchRequest, session: Session = Depends(get_session)):
+@limiter.limit(settings.RATE_LIMIT_AI_SEARCH)
+def semantic_vector_search(request: Request, req: SearchRequest, session: Session = Depends(get_session)):
     """Search campgrounds using high-dimensional vector similarity."""
     try:
         results = rag_service.semantic_search(
@@ -50,7 +52,8 @@ def semantic_vector_search(req: SearchRequest, session: Session = Depends(get_se
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/chat")
-def chat_with_aurora_guide(req: ChatRequest, session: Session = Depends(get_session)):
+@limiter.limit(settings.RATE_LIMIT_AI_CHAT)
+def chat_with_aurora_guide(request: Request, req: ChatRequest, session: Session = Depends(get_session)):
     """Interactive RAG chatbot powered by Google Gemini and Turso Vector."""
     try:
         history_dicts = [{"role": m.role, "content": m.content} for m in req.conversation_history]
@@ -66,7 +69,8 @@ def chat_with_aurora_guide(req: ChatRequest, session: Session = Depends(get_sess
 
 @agent_router.post("/interact", response_model=AgentInteractResponse)
 @router.post("/interact", response_model=AgentInteractResponse)
-async def interact_with_aurora_agent(req: AgentInteractRequest, session: Session = Depends(get_session)):
+@limiter.limit(settings.RATE_LIMIT_AI_INTERACT)
+async def interact_with_aurora_agent(request: Request, req: AgentInteractRequest, session: Session = Depends(get_session)):
     """
     Main AI Co-Pilot endpoint supporting:
     - Dynamic UI context injection (route, campground ID, form state)
@@ -113,7 +117,8 @@ def get_rag_status(session: Session = Depends(get_session)):
     }
 
 @router.post("/index-all")
-def trigger_bulk_indexing(session: Session = Depends(get_session)):
+@limiter.limit("3/minute")
+def trigger_bulk_indexing(request: Request, session: Session = Depends(get_session)):
     """Fast batched re-indexing for campgrounds into vector store with 768-dim embeddings."""
     camps = session.exec(select(Campground)).all()
     if not camps:

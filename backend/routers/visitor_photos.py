@@ -17,6 +17,8 @@ from schemas import (
 )
 from services.cloudinary_service import upload_visitor_photo, get_user_avatar_url
 from services.multimodal_embedder import process_story_ingestion
+from services.limiter import limiter
+from services.image_validator import sanitize_campground_image
 from routers.comments import build_comment_tree
 from config import settings
 
@@ -66,7 +68,7 @@ def format_photo_out(
         "user_username": photo.user_username,
         "user_avatar": get_user_avatar_url(photo.user_username, photo.user_avatar),
         "media_type": photo.media_type or "photo",
-        "image_url": photo.image_url,
+        "image_url": sanitize_campground_image(photo.image_url, photo.id),
         "caption": photo.caption or "",
         "ai_tags": tags,
         "ai_media_caption": photo.ai_media_caption or "",
@@ -85,6 +87,7 @@ def format_photo_out(
 
 @router.post("/campgrounds/{id}/stories")
 @router.post("/campgrounds/{id}/photos")
+@limiter.limit(settings.RATE_LIMIT_CONTENT_CREATE)
 async def create_visitor_photo(
     id: int,
     request: Request,
@@ -145,6 +148,8 @@ async def create_visitor_photo(
 
     if not final_image_url:
         raise HTTPException(status_code=400, detail="Image file or image_url is required")
+
+    final_image_url = sanitize_campground_image(final_image_url, id)
 
     # Expiry calculation: permanent unless explicit positive hours are passed
     expires_at = None
@@ -311,8 +316,10 @@ async def delete_visitor_photo(
 
 @router.post("/stories/{photo_id}/like")
 @router.post("/photos/{photo_id}/like")
+@limiter.limit(settings.RATE_LIMIT_SOCIAL_ACTION)
 async def toggle_photo_like(
     photo_id: int,
+    request: Request,
     db: Session = Depends(get_session),
     current_user: User = Depends(is_logged_in)
 ):
@@ -392,8 +399,10 @@ async def get_photo_comments(
 
 @router.post("/stories/{photo_id}/comments")
 @router.post("/photos/{photo_id}/comments")
+@limiter.limit("20/minute")
 async def create_photo_comment(
     photo_id: int,
+    request: Request,
     comment_data: dict,
     db: Session = Depends(get_session),
     current_user: User = Depends(is_logged_in)

@@ -14,4 +14,6 @@ uploads/
 test_*.py
 seed.py
 migrate_*.py
+.env
+.env*
 .env.local
