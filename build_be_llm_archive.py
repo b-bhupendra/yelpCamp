@@ -65,6 +65,8 @@ LANG_MAP = {
     ".yaml": "yaml",
     ".yml": "yaml",
     ".toml": "toml",
+    ".ini": "ini",
+    ".mako": "python",
     ".dockerignore": "dockerignore",
     ".gitignore": "gitignore",
 }

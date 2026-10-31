@@ -7,7 +7,7 @@ from sqlmodel import Session, select, func, case, delete, Float
 
 from models import Campground, User, Comment, Vote, VisitorPhoto, VisitorPhotoLike, Wishlist, CheckIn, CampgroundEmbedding
 from database import get_session
-from dependencies import is_logged_in, check_campground_author
+from dependencies import is_logged_in, check_campground_author, get_current_user
 from schemas import (
     CampgroundCreate, CampgroundUpdate, CampgroundOut, CampgroundCard,
     PaginatedCampgrounds, FileUploadResponse, CommentOut
@@ -33,26 +33,23 @@ def build_campground_out(
     likes_count: int,
     dislikes_count: int,
     visitor_photos_count: int,
-    comments_raw: List[Comment]
+    comments_raw: List[Comment],
+    user_vote: int = 0,
+    is_wishlisted: bool = False
 ) -> Dict[str, Any]:
     """Constructs data payload serialized directly by FastAPI's response_model=CampgroundOut."""
-    author_avatar = get_user_avatar_url(
-        campground.author_username,
-        campground.author.avatar_url if campground.author else None
-    )
     comments_tree = build_comment_tree(comments_raw)
-    safe_image = sanitize_campground_image(campground.image, campground.id)
 
     data = campground.model_dump()
     data.update({
-        "image": safe_image,
         "title": campground.title or campground.name or "",
         "name": campground.name or campground.title or "",
         "price": float(campground.price) if campground.price is not None else 0.0,
-        "author_avatar": author_avatar,
         "likes_count": likes_count,
         "dislikes_count": dislikes_count,
         "visitor_photos_count": visitor_photos_count,
+        "user_vote": user_vote,
+        "is_wishlisted": is_wishlisted,
         "comments": comments_raw,
         "comments_tree": comments_tree,
     })
@@ -192,9 +189,9 @@ async def create_campground(
         description=data.description,
         location=data.location or "",
         location_address=data.location_address or "",
-        gallery_images=json.dumps(clean_gallery),
-        amenities=json.dumps(data.amenities) if data.amenities else "[]",
-        rules=json.dumps(data.rules) if data.rules else "",
+        gallery_images=clean_gallery,
+        amenities=data.amenities or [],
+        rules=data.rules or {},
         author_id=current_user.id,
         author_username=current_user.username
     )
@@ -212,11 +209,17 @@ async def create_campground(
     )
 
 @router.get("/{id}", response_model=CampgroundOut)
-async def get_campground(id: int, db: Session = Depends(get_session)):
+async def get_campground(
+    id: int,
+    db: Session = Depends(get_session),
+    current_user: Optional[User] = Depends(get_current_user)
+):
     """
-    Retrieve full campsite details with metrics calculated in the database engine:
-    likes, dislikes, and visitor photos are counted via SQL scalar subqueries.
+    Retrieve full campsite details with metrics, user vote, and wishlist status calculated in SQL engine:
+    likes, dislikes, visitor photos, user_vote, and is_wishlisted evaluated in a single roundtrip.
     """
+    user_id = current_user.id if current_user else None
+
     likes_sub = (
         select(func.count(Vote.user_id))
         .where(Vote.campground_id == id, Vote.vote_type == 1)
@@ -233,19 +236,33 @@ async def get_campground(id: int, db: Session = Depends(get_session)):
         .scalar_subquery()
     )
 
+    user_vote_sub = (
+        select(Vote.vote_type)
+        .where(Vote.campground_id == id, Vote.user_id == user_id)
+        .scalar_subquery()
+    ) if user_id else None
+
+    wishlist_sub = (
+        select(func.count(Wishlist.campground_id))
+        .where(Wishlist.campground_id == id, Wishlist.user_id == user_id)
+        .scalar_subquery()
+    ) if user_id else None
+
     row = db.exec(
         select(
             Campground,
             func.coalesce(likes_sub, 0).label("likes_count"),
             func.coalesce(dislikes_sub, 0).label("dislikes_count"),
             func.coalesce(stories_sub, 0).label("visitor_photos_count"),
+            func.coalesce(user_vote_sub, 0).label("user_vote") if user_id else func.coalesce(None, 0).label("user_vote"),
+            (func.coalesce(wishlist_sub, 0) > 0).label("is_wishlisted") if user_id else func.coalesce(None, False).label("is_wishlisted"),
         ).where(Campground.id == id)
     ).first()
 
     if not row:
         raise HTTPException(status_code=404, detail="Campground not found")
 
-    campground, likes_cnt, dislikes_cnt, stories_cnt = row
+    campground, likes_cnt, dislikes_cnt, stories_cnt, user_vote_val, is_wishlisted_val = row
 
     comments_raw = db.exec(
         select(Comment)
@@ -258,7 +275,9 @@ async def get_campground(id: int, db: Session = Depends(get_session)):
         likes_count=likes_cnt,
         dislikes_count=dislikes_cnt,
         visitor_photos_count=stories_cnt,
-        comments_raw=list(comments_raw)
+        comments_raw=list(comments_raw),
+        user_vote=int(user_vote_val or 0),
+        is_wishlisted=bool(is_wishlisted_val)
     )
 
 @router.put("/{id}", response_model=CampgroundOut)
@@ -286,11 +305,11 @@ async def update_campground(
     if data.location_address is not None:
         campground.location_address = data.location_address
     if data.gallery_images is not None:
-        campground.gallery_images = json.dumps(sanitize_gallery_images(data.gallery_images, campground.id))
+        campground.gallery_images = sanitize_gallery_images(data.gallery_images, campground.id)
     if data.amenities is not None:
-        campground.amenities = json.dumps(data.amenities)
+        campground.amenities = data.amenities
     if data.rules is not None:
-        campground.rules = json.dumps(data.rules)
+        campground.rules = data.rules
 
     db.add(campground)
     db.commit()

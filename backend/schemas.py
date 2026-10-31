@@ -1,11 +1,13 @@
 import json
 from typing import Optional, List, Dict, Any, Generic, TypeVar
 from sqlmodel import SQLModel, Field
-from pydantic import BaseModel, model_validator, field_validator, ConfigDict
+from pydantic import BaseModel, model_validator, field_validator, computed_field, ConfigDict
 from models import (
     UserBase, CampgroundBase, CommentBase, VisitorPhotoBase,
     CheckInBase, TripBase, UINavigationBase
 )
+from services.cloudinary_service import get_user_avatar_url
+from services.image_validator import sanitize_campground_image, sanitize_gallery_images
 
 T = TypeVar("T")
 
@@ -35,6 +37,11 @@ class GoogleLoginRequest(SQLModel):
 
 class UserOut(UserBase):
     id: int
+
+    @model_validator(mode="after")
+    def ensure_avatar(self) -> "UserOut":
+        self.avatar_url = get_user_avatar_url(self.username, self.avatar_url)
+        return self
 
 class TokenResponse(SQLModel):
     message: Optional[str] = "Successfully authenticated"
@@ -77,6 +84,7 @@ class VisitorPhotoCreate(SQLModel):
 class VisitorPhotoOut(SQLModel):
     id: int
     campground_id: Optional[int] = None
+    campground_title: Optional[str] = ""
     user_id: int
     user_username: str
     username: Optional[str] = None  # Frontend compatibility alias
@@ -105,11 +113,12 @@ class VisitorPhotoOut(SQLModel):
         return v or []
 
     @model_validator(mode="after")
-    def populate_aliases(self):
+    def sanitize_and_aliases(self) -> "VisitorPhotoOut":
         if not self.username:
             self.username = self.user_username
-        if not self.avatar_url:
-            self.avatar_url = self.user_avatar
+        self.avatar_url = get_user_avatar_url(self.user_username, self.user_avatar or self.avatar_url)
+        self.user_avatar = self.avatar_url
+        self.image_url = sanitize_campground_image(self.image_url, self.id)
         return self
 
 class VisitorStoryGroupOut(SQLModel):
@@ -173,39 +182,21 @@ class CampgroundOut(CampgroundBase):
     likes_count: int = 0
     dislikes_count: int = 0
     visitor_photos_count: int = 0
+    is_wishlisted: bool = False
+    user_vote: int = 0
     comments: List[CommentOut] = []
     comments_tree: List[CommentOut] = []
 
-    @field_validator("gallery_images", mode="before")
-    @classmethod
-    def parse_gallery(cls, v):
-        if isinstance(v, str):
-            try:
-                return json.loads(v)
-            except Exception:
-                return []
-        return v or []
-
-    @field_validator("amenities", mode="before")
-    @classmethod
-    def parse_amenities(cls, v):
-        if isinstance(v, str):
-            try:
-                return json.loads(v)
-            except Exception:
-                return []
-        return v or []
-
-    @field_validator("rules", mode="before")
-    @classmethod
-    def parse_rules(cls, v):
-        if isinstance(v, str):
-            try:
-                parsed = json.loads(v)
-                return parsed if isinstance(parsed, dict) else {"notes": str(parsed)}
-            except Exception:
-                return {"notes": str(v)} if v else {}
-        return v or {}
+    @model_validator(mode="after")
+    def sanitize_media_and_avatar(self) -> "CampgroundOut":
+        if self.title and not self.name:
+            self.name = self.title
+        elif self.name and not self.title:
+            self.title = self.name
+        self.image = sanitize_campground_image(self.image, self.id)
+        self.gallery_images = sanitize_gallery_images(self.gallery_images, self.id)
+        self.author_avatar = get_user_avatar_url(self.author_username, self.author_avatar)
+        return self
 
 class PaginatedCampgrounds(PaginatedResponse[CampgroundCard]):
     pass

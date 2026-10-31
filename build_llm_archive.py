@@ -87,6 +87,8 @@ LANG_MAP = {
     ".ps1": "powershell",
     ".yaml": "yaml",
     ".yml": "yaml",
+    ".ini": "ini",
+    ".mako": "python",
 }
 
 def is_excluded(path: Path) -> bool:

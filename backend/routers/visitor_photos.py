@@ -13,7 +13,7 @@ from models import VisitorPhoto, VisitorPhotoLike, Campground, User, Comment
 from dependencies import get_current_user, is_logged_in
 from schemas import (
     VisitorPhotoOut, VisitorPhotoCreate, VisitorPhotoLikeResponse,
-    VisitorStoryGroupOut, CommentOut
+    VisitorStoryGroupOut, CommentOut, CommentCreate
 )
 from services.cloudinary_service import upload_visitor_photo, get_user_avatar_url
 from services.multimodal_embedder import process_story_ingestion
@@ -30,7 +30,8 @@ def build_photo_out(
     photo: VisitorPhoto,
     comments_count: int = 0,
     liked_by_me: bool = False,
-    comments: Optional[List[CommentOut]] = None
+    comments: Optional[List[CommentOut]] = None,
+    campground_title: Optional[str] = None
 ) -> Dict[str, Any]:
     """Helper returning dictionary serialized directly by FastAPI's response_model=VisitorPhotoOut."""
     avatar = get_user_avatar_url(photo.user_username, photo.user_avatar)
@@ -43,7 +44,10 @@ def build_photo_out(
         "avatar_url": avatar,
         "comments_count": comments_count,
         "liked_by_me": liked_by_me,
-        "comments": comments or []
+        "comments": comments or [],
+        "campground_title": campground_title if campground_title is not None else (
+            photo.campground.title if getattr(photo, "campground", None) else ""
+        )
     })
     return data
 
@@ -136,7 +140,8 @@ async def create_visitor_photo(
 
     background_tasks.add_task(process_story_ingestion, new_photo.id)
 
-    return build_photo_out(new_photo, comments_count=0, liked_by_me=False)
+    camp_title = campground.title or campground.name or ""
+    return build_photo_out(new_photo, comments_count=0, liked_by_me=False, campground_title=camp_title)
 
 @router.get("/campgrounds/{id}/stories", response_model=List[VisitorPhotoOut])
 async def get_campground_photos(
@@ -146,7 +151,7 @@ async def get_campground_photos(
 ):
     """
     Retrieve all active photos/moments for a given campground.
-    Database-heavy: evaluates comments_count and liked_by_me in a single SQL query.
+    Database-heavy: evaluates comments_count, liked_by_me, and campground_title in a single SQL query.
     """
     now = int(time.time())
     user_id = current_user.id if current_user else None
@@ -163,9 +168,11 @@ async def get_campground_photos(
             func.coalesce(comment_sub.c.cnt, 0).label("comments_count"),
             (VisitorPhotoLike.user_id.is_not(None)).label("liked_by_me")
             if user_id else
-            func.coalesce(None, False).label("liked_by_me")
+            func.coalesce(None, False).label("liked_by_me"),
+            func.coalesce(Campground.title, Campground.name, "").label("campground_title")
         )
         .outerjoin(comment_sub, comment_sub.c.photo_id == VisitorPhoto.id)
+        .outerjoin(Campground, Campground.id == VisitorPhoto.campground_id)
     )
 
     if user_id:
@@ -184,13 +191,14 @@ async def get_campground_photos(
         build_photo_out(
             photo=r[0],
             comments_count=r[1],
-            liked_by_me=bool(r[2])
+            liked_by_me=bool(r[2]),
+            campground_title=r[3] or ""
         )
         for r in rows
     ]
 
 # ==========================================
-# 2. Global Story Tray (Instagram-style)
+# 2. Global Story Tray & User Moments
 # ==========================================
 
 @router.get("/stories", response_model=List[VisitorStoryGroupOut])
@@ -217,9 +225,11 @@ async def get_active_stories(
             func.coalesce(comment_sub.c.cnt, 0).label("comments_count"),
             (VisitorPhotoLike.user_id.is_not(None)).label("liked_by_me")
             if user_id else
-            func.coalesce(None, False).label("liked_by_me")
+            func.coalesce(None, False).label("liked_by_me"),
+            func.coalesce(Campground.title, Campground.name, "").label("campground_title")
         )
         .outerjoin(comment_sub, comment_sub.c.photo_id == VisitorPhoto.id)
+        .outerjoin(Campground, Campground.id == VisitorPhoto.campground_id)
     )
 
     if user_id:
@@ -235,7 +245,7 @@ async def get_active_stories(
     rows = db.exec(query).all()
 
     grouped_users: Dict[int, VisitorStoryGroupOut] = {}
-    for photo, c_cnt, liked in rows:
+    for photo, c_cnt, liked, c_title in rows:
         uid = photo.user_id
         avatar = get_user_avatar_url(photo.user_username, photo.user_avatar)
         if uid not in grouped_users:
@@ -249,10 +259,58 @@ async def get_active_stories(
                 latest_timestamp=photo.created_at,
                 photos=[]
             )
-        photo_out = build_photo_out(photo=photo, comments_count=c_cnt, liked_by_me=bool(liked))
+        photo_out = build_photo_out(
+            photo=photo,
+            comments_count=c_cnt,
+            liked_by_me=bool(liked),
+            campground_title=c_title or ""
+        )
         grouped_users[uid].photos.append(photo_out)
 
     return list(grouped_users.values())
+
+@router.get("/me/moments", response_model=List[VisitorPhotoOut])
+async def get_my_moments(
+    db: Session = Depends(get_session),
+    current_user: User = Depends(is_logged_in)
+):
+    """
+    Retrieve all visitor photos/moments created by the authenticated user,
+    with comments_count, liked_by_me, and campground_title computed in SQL.
+    """
+    comment_sub = (
+        select(Comment.photo_id, func.count(Comment.id).label("cnt"))
+        .group_by(Comment.photo_id)
+        .subquery()
+    )
+
+    query = (
+        select(
+            VisitorPhoto,
+            func.coalesce(comment_sub.c.cnt, 0).label("comments_count"),
+            (VisitorPhotoLike.user_id.is_not(None)).label("liked_by_me"),
+            func.coalesce(Campground.title, Campground.name, "").label("campground_title")
+        )
+        .outerjoin(comment_sub, comment_sub.c.photo_id == VisitorPhoto.id)
+        .outerjoin(
+            VisitorPhotoLike,
+            (VisitorPhotoLike.photo_id == VisitorPhoto.id) & (VisitorPhotoLike.user_id == current_user.id)
+        )
+        .outerjoin(Campground, Campground.id == VisitorPhoto.campground_id)
+        .where(VisitorPhoto.user_id == current_user.id)
+        .order_by(VisitorPhoto.created_at.desc())
+    )
+
+    rows = db.exec(query).all()
+    return [
+        build_photo_out(
+            photo=r[0],
+            comments_count=r[1],
+            liked_by_me=bool(r[2]),
+            campground_title=r[3] or ""
+        )
+        for r in rows
+    ]
 
 # ==========================================
 # 3. Story Details, Likes & Deletion
@@ -288,11 +346,15 @@ async def get_photo_detail(
     ).all()
     comments_tree = build_comment_tree(list(comments_raw))
 
+    campground = db.get(Campground, photo.campground_id) if photo.campground_id else None
+    camp_title = (campground.title or campground.name) if campground else ""
+
     return build_photo_out(
         photo=photo,
         comments_count=len(comments_raw),
         liked_by_me=liked_by_me,
-        comments=comments_tree
+        comments=comments_tree,
+        campground_title=camp_title
     )
 
 @router.delete("/stories/{photo_id}")
@@ -401,7 +463,7 @@ async def get_photo_comments(
 async def create_photo_comment(
     photo_id: int,
     request: Request,
-    comment_data: dict,
+    comment_data: CommentCreate,
     db: Session = Depends(get_session),
     current_user: User = Depends(is_logged_in)
 ):
@@ -410,10 +472,10 @@ async def create_photo_comment(
     if not photo:
         raise HTTPException(status_code=404, detail="Visitor photo not found")
 
-    text = comment_data.get("text")
-    parent_comment_id = comment_data.get("parent_comment_id")
+    text = (comment_data.text or "").strip()
+    parent_comment_id = comment_data.parent_comment_id
 
-    if not text or not str(text).strip():
+    if not text:
         raise HTTPException(status_code=400, detail="Comment text cannot be empty")
 
     if parent_comment_id is not None:
@@ -424,7 +486,7 @@ async def create_photo_comment(
     author_avatar = get_user_avatar_url(current_user.username, current_user.avatar_url)
 
     new_comment = Comment(
-        text=str(text).strip(),
+        text=text,
         parent_comment_id=parent_comment_id,
         photo_id=photo_id,
         author_id=current_user.id,

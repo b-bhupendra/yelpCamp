@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pydantic import field_validator, field_serializer
+from sqlalchemy import Column, JSON
 from sqlmodel import Field, SQLModel, Relationship
 
 # ==============================================================================
@@ -67,9 +68,9 @@ class CampgroundBase(SQLModel):
 class Campground(CampgroundBase, table=True):
     __tablename__ = "campground"
     id: Optional[int] = Field(default=None, primary_key=True)
-    gallery_images: str = Field(default="[]")  # JSON list of image URLs
-    amenities: str = Field(default="[]")       # JSON list of amenity tags
-    rules: Optional[str] = Field(default="")
+    gallery_images: List[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    amenities: List[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    rules: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     author_id: Optional[int] = Field(default=None, foreign_key="user.id")
     author_username: str = Field(default="")
     
@@ -89,7 +90,7 @@ class VisitorPhotoBase(SQLModel):
     media_type: str = Field(default="photo")  # "photo" | "video"
     image_url: str
     caption: Optional[str] = Field(default="")
-    ai_tags: str = Field(default="[]")       # JSON list of tags e.g. ["campfire", "stargazing"]
+    ai_tags: List[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     ai_media_caption: Optional[str] = Field(default="")
     likes_count: int = Field(default=0)
     expires_at: Optional[int] = Field(default=None, index=True)  # Unix timestamp for 24h stories; None for permanent

@@ -26,14 +26,20 @@ export default function Dashboard() {
 
   const fetchMyMoments = async () => {
     try {
-      const res = await api.get('/api/stories');
-      const allStories = Array.isArray(res.data) ? res.data : (res.data.stories || []);
-      const userStory = allStories.find(
-        (s) => s.user_id === user?.id || s.username === user?.username || s.user_username === user?.username
-      );
-      setMyMoments(userStory?.photos || []);
+      const res = await api.get('/api/me/moments');
+      setMyMoments(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error('Failed to load my moments:', err);
+      console.error('Failed to load my moments from /api/me/moments, trying fallback:', err);
+      try {
+        const fallbackRes = await api.get('/api/stories');
+        const allStories = Array.isArray(fallbackRes.data) ? fallbackRes.data : (fallbackRes.data.stories || []);
+        const userStory = allStories.find(
+          (s) => s.user_id === user?.id || s.username === user?.username || s.user_username === user?.username
+        );
+        setMyMoments(userStory?.photos || []);
+      } catch (fallbackErr) {
+        console.error('Failed to load my moments:', fallbackErr);
+      }
     }
   };
 

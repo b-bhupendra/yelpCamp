@@ -123,7 +123,7 @@ export function useAgentChat() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, messages, registeredActions, uiContext, executeAction, highlightElement]);
+  }, [isLoading, messages, registeredActions, uiContext, executeAction, executeAgentAction, highlightElement, getCurrentSnapshot]);
 
   const clearMessages = useCallback(() => {
     setMessages([INITIAL_GREETING]);

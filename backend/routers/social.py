@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlmodel import Session, select, func, case
 from models import Vote, Campground, User, Wishlist, CheckIn, Trip, TripMember, Comment, VisitorPhoto
 from database import get_session
-from dependencies import is_logged_in
+from dependencies import is_logged_in, get_current_user
 from schemas import (
     VoteResponse, WishlistToggleResponse, DashboardResponse, WishlistCampgroundItem,
     CheckInCreate, CheckInOut, TripCreate, TripOut, TripMemberAdd
@@ -78,14 +78,31 @@ async def toggle_vote(
     )
 
 @router.get("/campgrounds/{id}/stats")
-async def get_stats(id: int, db: Session = Depends(get_session)):
-    """Retrieve community vote statistics for a campsite directly from SQL engine."""
+async def get_stats(
+    id: int,
+    db: Session = Depends(get_session),
+    current_user: Optional[User] = Depends(get_current_user)
+):
+    """Retrieve community vote statistics and user state for a campsite directly from SQL engine."""
     campground = db.get(Campground, id)
     if not campground:
         raise HTTPException(status_code=404, detail="Campground not found")
     
     likes, dislikes = get_campground_vote_counts(db, id)
-    return {"likes": likes, "dislikes": dislikes}
+    user_vote = 0
+    is_wishlisted = False
+    if current_user:
+        v = db.exec(select(Vote.vote_type).where(Vote.campground_id == id, Vote.user_id == current_user.id)).first()
+        user_vote = int(v) if v is not None else 0
+        w = db.exec(select(Wishlist).where(Wishlist.campground_id == id, Wishlist.user_id == current_user.id)).first()
+        is_wishlisted = bool(w)
+
+    return {
+        "likes": likes,
+        "dislikes": dislikes,
+        "user_vote": user_vote,
+        "is_wishlisted": is_wishlisted
+    }
 
 @router.post("/campgrounds/{id}/wishlist", response_model=WishlistToggleResponse)
 @limiter.limit(settings.RATE_LIMIT_SOCIAL_ACTION)

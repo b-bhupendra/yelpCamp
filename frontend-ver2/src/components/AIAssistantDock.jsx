@@ -143,6 +143,7 @@ export default function AIAssistantDock() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [isExecutingApproval, setIsExecutingApproval] = useState(false);
 
   const chatScrollRef = useRef(null);

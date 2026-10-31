@@ -29,36 +29,18 @@ def set_auth_cookie(response: Response, token: str):
 
 @router.post("/register", response_model=TokenResponse)
 @limiter.limit(settings.RATE_LIMIT_AUTH_REGISTER)
-async def register(
+def register(
     request: Request,
     response: Response,
-    user_data: Optional[UserCreate] = None,
-    username: Optional[str] = Form(None),
-    password: Optional[str] = Form(None),
+    user_data: UserCreate,
     db: Session = Depends(get_session)
 ):
-    # Support both JSON payload and FormData
-    uname = user_data.username if user_data else username
-    pwd = user_data.password if user_data else password
-
-    if not uname or not pwd:
-        # Check raw json body if neither caught it
-        try:
-            body = await request.json()
-            uname = body.get("username")
-            pwd = body.get("password")
-        except Exception:
-            pass
-
-    if not uname or not pwd:
-        raise HTTPException(status_code=400, detail="Username and password are required")
-
-    existing_user = db.exec(select(User).where(User.username == uname)).first()
+    existing_user = db.exec(select(User).where(User.username == user_data.username)).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already exists")
         
-    hashed_pwd = get_password_hash(pwd)
-    new_user = User(username=uname, hashed_password=hashed_pwd)
+    hashed_pwd = get_password_hash(user_data.password)
+    new_user = User(username=user_data.username, hashed_password=hashed_pwd)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -67,69 +49,46 @@ async def register(
     token = create_access_token({"sub": str(new_user.id), "username": new_user.username})
     set_auth_cookie(response, token)
     
-    avatar = get_user_avatar_url(new_user.username, new_user.avatar_url)
     return {
         "message": f"Welcome to YelpCamp {new_user.username}",
         "access_token": token,
         "token_type": "bearer",
-        "user": {"id": new_user.id, "username": new_user.username, "avatar_url": avatar}
+        "user": new_user
     }
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit(settings.RATE_LIMIT_AUTH_LOGIN)
-async def login(
+def login(
     request: Request,
     response: Response,
-    user_data: Optional[UserLogin] = None,
-    username: Optional[str] = Form(None),
-    password: Optional[str] = Form(None),
+    user_data: UserLogin,
     db: Session = Depends(get_session)
 ):
-    uname = user_data.username if user_data else username
-    pwd = user_data.password if user_data else password
-    if not uname or not pwd:
-        raise HTTPException(status_code=400, detail="Username and password are required")
-
-    user = db.exec(select(User).where(User.username == uname)).first()
-    if not user or not verify_password(pwd, user.hashed_password):
+    user = db.exec(select(User).where(User.username == user_data.username)).first()
+    if not user or not verify_password(user_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
     # Generate JWT Token
     token = create_access_token({"sub": str(user.id), "username": user.username})
     set_auth_cookie(response, token)
 
-    avatar = get_user_avatar_url(user.username, user.avatar_url)
-
     return {
         "message": "Successfully logged in!",
         "access_token": token,
         "token_type": "bearer",
-        "user": {"id": user.id, "username": user.username, "avatar_url": avatar}
+        "user": user
     }
 
 @router.post("/auth/google", response_model=TokenResponse)
 @limiter.limit("10/minute")
-async def google_auth(
+def google_auth(
     request: Request,
     response: Response,
-    payload: Optional[GoogleLoginRequest] = None,
+    payload: GoogleLoginRequest,
     db: Session = Depends(get_session)
 ):
-    token = None
-    if payload and payload.token:
-        token = payload.token
-    else:
-        try:
-            body = await request.json()
-            token = body.get("token") or body.get("credential")
-        except Exception:
-            pass
-
-    if not token:
-        raise HTTPException(status_code=400, detail="Google token/credential is required")
-
     # 1. Verify token with Google Identity Services API
-    google_info = verify_google_token(token)
+    google_info = verify_google_token(payload.token)
     email = google_info["email"]
     picture = google_info.get("picture")
     
@@ -163,16 +122,11 @@ async def google_auth(
     jwt_token = create_access_token({"sub": str(user.id), "username": user.username})
     set_auth_cookie(response, jwt_token)
 
-    avatar = get_user_avatar_url(user.username, user.avatar_url)
     return {
         "message": f"Successfully authenticated as {user.username} via Google",
         "access_token": jwt_token,
         "token_type": "bearer",
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "avatar_url": avatar
-        }
+        "user": user
     }
 
 @router.get("/me")

@@ -19,8 +19,8 @@ class MultimodalEmbedder:
     """
     def __init__(self):
         self.api_key = settings.GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-        self.embedding_model = settings.EMBEDDING_MODEL or "gemini-embedding-2"
-        self.vision_model = settings.CHAT_MODEL or "gemini-3.5-flash"
+        self.embedding_model = settings.EMBEDDING_MODEL or "text-embedding-004"
+        self.vision_model = settings.VISION_MODEL or "gemini-2.5-flash"
         self.dimension = 768
         self.client = None
         self._init_client()

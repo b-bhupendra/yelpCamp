@@ -364,7 +364,7 @@ export function AgentProvider({ children }) {
         uiContext,
         setUiContext,
         updateUiContext,
-        registeredActions: actionsRef.current,
+        registeredActions,
         pendingApproval,
         registerAction,
         unregisterAction,

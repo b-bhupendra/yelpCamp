@@ -1,6 +1,7 @@
 import json
 import logging
 from typing import List, Dict, Any, Optional
+from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 from config import settings
 from services.multimodal_embedder import multimodal_embedder
@@ -8,20 +9,31 @@ from services.vector_store import vector_store
 
 logger = logging.getLogger(__name__)
 
+class AgentUIHighlight(BaseModel):
+    route: Optional[str] = None
+    dom_selector: Optional[str] = None
+    feature_name: Optional[str] = None
+    description: Optional[str] = None
+
+class AgentLLMOutput(BaseModel):
+    reply: str = Field(description="Warm, helpful response citing campsites as [Campground: <Name>](campground:<id>)")
+    trigger_action_id: Optional[str] = Field(default=None, description="Action ID to execute from available actions, or null")
+    action_args: Optional[Dict[str, Any]] = Field(default=None, description="Arguments for the triggered action, or null")
+    ui_highlight: Optional[AgentUIHighlight] = Field(default=None, description="Element spotlight information, or null")
+
 class RAGService:
     """
     RAG Orchestration & Dynamic AI Agent Co-Pilot Service.
     Integrates 3-Stage Hybrid Retrieval (Dense Vector + FTS5 BM25 + Cross-Encoder)
-    with Google Gemini 3.5 Flash tool calling to execute in-app React actions and highlight DOM elements.
+    with Google Gemini tool calling to execute in-app React actions and highlight DOM elements.
     """
     def __init__(self):
-        self.chat_model = settings.CHAT_MODEL or "gemini-3.5-flash"
+        self.chat_model = settings.CHAT_MODEL or "gemini-2.5-flash"
         self.fallback_models = [
-            "gemini-3.5-flash",
-            "gemini-3.5-flash-lite",
+            "gemini-2.5-flash",
+            "gemini-1.5-flash",
+            "gemini-2.0-flash",
             "gemini-2.5-flash-lite",
-            "gemini-flash-latest",
-            "gemini-3.8-flash"
         ]
 
     def semantic_search(
@@ -113,6 +125,7 @@ class RAGService:
             config = types.GenerateContentConfig(
                 system_instruction=system_instruction,
                 response_mime_type="application/json",
+                response_schema=AgentLLMOutput,
                 temperature=0.3,
                 max_output_tokens=600
             )
@@ -127,7 +140,8 @@ class RAGService:
                         config=config
                     )
                     if response and response.text:
-                        reply_json = json.loads(response.text.strip())
+                        parsed_output = AgentLLMOutput.model_validate_json(response.text.strip())
+                        reply_json = parsed_output.model_dump()
                         break
                 except Exception as e:
                     logger.warning(f"Agent generation failed with model {model_name}: {e}")
