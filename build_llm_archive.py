@@ -6,10 +6,14 @@ node_modules, media assets, and secrets.
 """
 
 import os
+import shutil
+import subprocess
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent
+CONTEXT_DIR = ROOT_DIR / "llm_context"
 
 EXCLUDED_DIRS = {
     "node_modules",
@@ -25,6 +29,8 @@ EXCLUDED_DIRS = {
     ".idea",
     ".vscode",
     ".agents",
+    "llm_context",
+    "docs",
     "backend_clean_codebase",
     "frontend_clean_codebase",
     "yelpcamp_clean_codebase",
@@ -123,6 +129,24 @@ def collect_files():
                 collected.append(file_path)
     return sorted(collected, key=lambda p: str(p.relative_to(ROOT_DIR)).replace("\\", "/"))
 
+def get_git_info() -> str:
+    try:
+        commit = subprocess.check_output(
+            ["git", "log", "-1", "--format=%h - %s (%ci)"],
+            cwd=str(ROOT_DIR),
+            text=True,
+            stderr=subprocess.DEVNULL
+        ).strip()
+        branch = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=str(ROOT_DIR),
+            text=True,
+            stderr=subprocess.DEVNULL
+        ).strip()
+        return f"Branch: {branch} | Commit: {commit}"
+    except Exception:
+        return "Git info unavailable"
+
 def build_tree(files):
     lines = []
     for p in files:
@@ -135,8 +159,15 @@ def main():
     files = collect_files()
     print(f">> Total eligible files found: {len(files)}")
 
+    CONTEXT_DIR.mkdir(parents=True, exist_ok=True)
     output_txt = ROOT_DIR / "yelpcamp_llm_codebase.txt"
     output_zip = ROOT_DIR / "yelpcamp_clean_codebase.zip"
+    context_txt = CONTEXT_DIR / "yelpcamp_llm_codebase.txt"
+    context_zip = CONTEXT_DIR / "yelpcamp_clean_codebase.zip"
+
+    git_info = get_git_info()
+    utc_now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    local_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S Local")
 
     total_lines = 0
     total_chars = 0
@@ -144,7 +175,8 @@ def main():
     # 1. Build text digest for LLMs
     with open(output_txt, "w", encoding="utf-8") as out:
         out.write("# YELPCAMP FULL CODEBASE ARCHIVE FOR LLM INGESTION\n")
-        out.write(f"# Generated: {Path.cwd()}\n")
+        out.write(f"# Generated: {utc_now} ({local_now})\n")
+        out.write(f"# Git: {git_info}\n")
         out.write(f"# Total Files: {len(files)}\n")
         out.write("# Description: Complete application source code (FastAPI + Turso SQLite Vector RAG + React/Vite/Tailwind UI)\n")
         out.write("# Note: Downloadables, binaries, media, lockfiles, virtualenvs, and secrets are strictly excluded.\n\n")
@@ -181,7 +213,9 @@ def main():
             except Exception as e:
                 out.write(f"[Error reading file: {e}]\n\n")
 
-    print(f">> Created LLM digest: {output_txt.name}")
+    shutil.copy2(output_txt, context_txt)
+
+    print(f">> Created LLM digest: {output_txt.name} & {context_txt.relative_to(ROOT_DIR)}")
     print(f">> Total lines of code: {total_lines:,}")
     print(f">> Total characters: {total_chars:,} (~{total_chars // 4:,} estimated tokens)")
     print(f">> Digest file size: {output_txt.stat().st_size / (1024 * 1024):.2f} MB")
@@ -192,7 +226,9 @@ def main():
             rel = str(p.relative_to(ROOT_DIR)).replace("\\", "/")
             zf.write(p, arcname=rel)
 
-    print(f">> Created clean source zip: {output_zip.name} ({output_zip.stat().st_size / 1024:.1f} KB)")
+    shutil.copy2(output_zip, context_zip)
+
+    print(f">> Created clean source zip: {output_zip.name} & {context_zip.relative_to(ROOT_DIR)} ({output_zip.stat().st_size / 1024:.1f} KB)")
     print(">> Archive creation completed successfully.")
 
 if __name__ == "__main__":

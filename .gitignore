@@ -40,6 +40,7 @@ dist/
 # Uploads & legacy archives
 archive/
 uploads/
+llm_context/
 *.zip
 *.pdf
 yelpcamp_llm_codebase.*
