@@ -215,15 +215,15 @@ async def get_my_dashboard(
         for r in my_camps_rows
     ]
 
-    return DashboardResponse(
-        username=current_user.username,
-        avatar_url=get_user_avatar_url(current_user.username, current_user.avatar_url),
-        total_posts=total_posts,
-        total_likes=total_likes,
-        wishlist_count=total_wishlist_count,
-        wishlist=wishlist_items[:10],
-        my_campgrounds=my_campgrounds_list,
-    )
+    return {
+        "username": current_user.username,
+        "avatar_url": get_user_avatar_url(current_user.username, current_user.avatar_url),
+        "total_posts": total_posts,
+        "total_likes": total_likes,
+        "wishlist_count": total_wishlist_count,
+        "wishlist": wishlist_items[:10],
+        "my_campgrounds": my_campgrounds_list,
+    }
 
 @router.post("/campgrounds/{id}/checkin", response_model=CheckInOut)
 @limiter.limit("20/minute")
@@ -250,41 +250,38 @@ async def add_checkin(
     db.commit()
     db.refresh(checkin)
 
-    return CheckInOut(
-        id=checkin.id,
-        user_id=current_user.id,
-        username=current_user.username,
-        campground_id=id,
-        timestamp=checkin.timestamp
-    )
+    return {
+        "id": checkin.id,
+        "user_id": current_user.id,
+        "username": current_user.username,
+        "campground_id": id,
+        "timestamp": checkin.timestamp
+    }
 
 @router.get("/campgrounds/{id}/checkins", response_model=List[CheckInOut])
 async def get_checkins(id: int, db: Session = Depends(get_session)):
     """
     Retrieve field check-in history for a campsite via a single SQL JOIN.
-    Eliminates N+1 loop.
+    Database row mappings stream directly to FastAPI response serializer.
     """
     campground = db.get(Campground, id)
     if not campground:
         raise HTTPException(status_code=404, detail="Campground not found")
 
     checkin_rows = db.exec(
-        select(CheckIn, User.username)
+        select(
+            CheckIn.id,
+            CheckIn.user_id,
+            func.coalesce(User.username, "Adventurer").label("username"),
+            CheckIn.campground_id,
+            CheckIn.timestamp
+        )
         .join(User, CheckIn.user_id == User.id, isouter=True)
         .where(CheckIn.campground_id == id)
         .order_by(CheckIn.id.desc())
     ).all()
 
-    return [
-        CheckInOut(
-            id=c.id,
-            user_id=c.user_id,
-            username=uname or "Adventurer",
-            campground_id=c.campground_id,
-            timestamp=c.timestamp
-        )
-        for c, uname in checkin_rows
-    ]
+    return [r._asdict() for r in checkin_rows]
 
 @router.post("/trips", response_model=TripOut)
 async def create_trip(

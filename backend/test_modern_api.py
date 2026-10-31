@@ -6,14 +6,14 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
-from database import engine, create_db_and_tables
+from database import engine, apply_migrations
 from models import User, Campground
 from security import get_password_hash, create_access_token
 from main import app
 
 def run_tests():
-    print("--- Initializing Test Environment ---")
-    create_db_and_tables()
+    print("--- Initializing Test Environment via Alembic Migrations ---")
+    apply_migrations()
     client = TestClient(app)
 
     with Session(engine) as session:

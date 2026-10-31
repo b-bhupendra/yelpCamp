@@ -3,7 +3,7 @@ import json
 import logging
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, BackgroundTasks, Request
-from sqlmodel import Session, select, func, case, delete
+from sqlmodel import Session, select, func, case, delete, Float
 
 from models import Campground, User, Comment, Vote, VisitorPhoto, VisitorPhotoLike, Wishlist, CheckIn, CampgroundEmbedding
 from database import get_session
@@ -34,79 +34,29 @@ def build_campground_out(
     dislikes_count: int,
     visitor_photos_count: int,
     comments_raw: List[Comment]
-) -> CampgroundOut:
-    """Helper to construct a validated CampgroundOut schema with parsed gallery, amenities, and rules."""
-    gallery_imgs = []
-    if campground.gallery_images:
-        try:
-            gallery_imgs = json.loads(campground.gallery_images) if isinstance(campground.gallery_images, str) else list(campground.gallery_images)
-        except Exception:
-            gallery_imgs = []
-
-    amenities_list = []
-    if campground.amenities:
-        try:
-            amenities_list = json.loads(campground.amenities) if isinstance(campground.amenities, str) else list(campground.amenities)
-        except Exception:
-            amenities_list = []
-
-    rules_dict = {}
-    if campground.rules:
-        try:
-            rules_dict = json.loads(campground.rules) if isinstance(campground.rules, str) else dict(campground.rules)
-        except Exception:
-            rules_dict = {"notes": str(campground.rules)}
-
+) -> Dict[str, Any]:
+    """Constructs data payload serialized directly by FastAPI's response_model=CampgroundOut."""
     author_avatar = get_user_avatar_url(
         campground.author_username,
         campground.author.avatar_url if campground.author else None
     )
-
     comments_tree = build_comment_tree(comments_raw)
-
-    comments_list = [
-        CommentOut(
-            id=c.id,
-            text=c.text,
-            author_id=c.author_id,
-            author_username=c.author_username or "",
-            author_avatar=get_user_avatar_url(c.author_username, c.author_avatar),
-            campground_id=c.campground_id,
-            parent_comment_id=c.parent_comment_id,
-            rating=c.rating,
-            created_at=c.created_at,
-            replies=[]
-        )
-        for c in comments_raw
-    ]
-
     safe_image = sanitize_campground_image(campground.image, campground.id)
-    safe_gallery = sanitize_gallery_images(gallery_imgs, campground.id)
 
-    return CampgroundOut(
-        id=campground.id,
-        title=campground.title or campground.name or "",
-        name=campground.name or campground.title or "",
-        price=float(campground.price) if campground.price is not None else 0.0,
-        image=safe_image,
-        description=campground.description or "",
-        location=campground.location or "",
-        location_address=campground.location_address or "",
-        gallery_images=safe_gallery,
-        amenities=amenities_list,
-        rules=rules_dict,
-        avg_rating=float(campground.avg_rating or 0.0),
-        ai_media_caption=campground.ai_media_caption or "",
-        community_summary=campground.community_summary or "",
-        author_id=campground.author_id,
-        author_username=campground.author_username or "",
-        author_avatar=author_avatar,
-        likes_count=likes_count,
-        dislikes_count=dislikes_count,
-        visitor_photos_count=visitor_photos_count,
-        comments=comments_list,
-        comments_tree=comments_tree
-    )
+    data = campground.model_dump()
+    data.update({
+        "image": safe_image,
+        "title": campground.title or campground.name or "",
+        "name": campground.name or campground.title or "",
+        "price": float(campground.price) if campground.price is not None else 0.0,
+        "author_avatar": author_avatar,
+        "likes_count": likes_count,
+        "dislikes_count": dislikes_count,
+        "visitor_photos_count": visitor_photos_count,
+        "comments": comments_raw,
+        "comments_tree": comments_tree,
+    })
+    return data
 
 @router.get("", response_model=PaginatedCampgrounds)
 async def list_campgrounds(
@@ -136,7 +86,7 @@ async def list_campgrounds(
         select(
             Campground.id,
             func.coalesce(func.nullif(Campground.title, ''), Campground.name, '').label("title"),
-            Campground.price,
+            func.cast(Campground.price, Float).label("price"),
             Campground.image,
             Campground.description,
             Campground.location,
@@ -189,34 +139,16 @@ async def list_campgrounds(
     paginated_rows = db.exec(query.offset(start).limit(limit)).all()
     total_pages = (total + limit - 1) // limit if total > 0 else 1
 
-    # Backend operates strictly as an I/O machine streaming SQL rows into CampgroundCard
-    items = [
-        CampgroundCard(
-            id=r.id,
-            title=r.title or "",
-            price=float(r.price) if r.price is not None else 0.0,
-            image=r.image or "",
-            description=r.description or "",
-            location=r.location or "",
-            location_address=r.location_address or "",
-            avg_rating=float(r.avg_rating or 0.0),
-            author_id=r.author_id,
-            author_username=r.author_username or "",
-            likes_count=r.likes_count,
-            dislikes_count=r.dislikes_count,
-        )
-        for r in paginated_rows
-    ]
-
-    return PaginatedCampgrounds(
-        items=items,
-        total=total,
-        page=page,
-        limit=limit,
-        total_pages=total_pages,
-        has_next=page < total_pages,
-        has_prev=page > 1
-    )
+    # Database rows stream as dicts directly to FastAPI response serializer
+    return {
+        "items": [r._asdict() for r in paginated_rows],
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_prev": page > 1
+    }
 
 @router.post("/upload", response_model=FileUploadResponse)
 @limiter.limit("15/minute")

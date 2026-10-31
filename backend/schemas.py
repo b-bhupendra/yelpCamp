@@ -1,6 +1,7 @@
+import json
 from typing import Optional, List, Dict, Any, Generic, TypeVar
 from sqlmodel import SQLModel, Field
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, field_validator, ConfigDict
 from models import (
     UserBase, CampgroundBase, CommentBase, VisitorPhotoBase,
     CheckInBase, TripBase, UINavigationBase
@@ -93,6 +94,16 @@ class VisitorPhotoOut(SQLModel):
     liked_by_me: bool = False
     comments: List[CommentOut] = []
 
+    @field_validator("ai_tags", mode="before")
+    @classmethod
+    def parse_ai_tags(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                return []
+        return v or []
+
     @model_validator(mode="after")
     def populate_aliases(self):
         if not self.username:
@@ -164,6 +175,37 @@ class CampgroundOut(CampgroundBase):
     visitor_photos_count: int = 0
     comments: List[CommentOut] = []
     comments_tree: List[CommentOut] = []
+
+    @field_validator("gallery_images", mode="before")
+    @classmethod
+    def parse_gallery(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                return []
+        return v or []
+
+    @field_validator("amenities", mode="before")
+    @classmethod
+    def parse_amenities(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                return []
+        return v or []
+
+    @field_validator("rules", mode="before")
+    @classmethod
+    def parse_rules(cls, v):
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                return parsed if isinstance(parsed, dict) else {"notes": str(parsed)}
+            except Exception:
+                return {"notes": str(v)} if v else {}
+        return v or {}
 
 class PaginatedCampgrounds(PaginatedResponse[CampgroundCard]):
     pass

@@ -31,37 +31,21 @@ def build_photo_out(
     comments_count: int = 0,
     liked_by_me: bool = False,
     comments: Optional[List[CommentOut]] = None
-) -> VisitorPhotoOut:
-    """Helper to convert a VisitorPhoto model to a clean typed VisitorPhotoOut schema."""
-    tags = []
-    if photo.ai_tags:
-        try:
-            tags = json.loads(photo.ai_tags) if isinstance(photo.ai_tags, str) else list(photo.ai_tags)
-        except Exception:
-            tags = []
-
+) -> Dict[str, Any]:
+    """Helper returning dictionary serialized directly by FastAPI's response_model=VisitorPhotoOut."""
     avatar = get_user_avatar_url(photo.user_username, photo.user_avatar)
+    safe_image = sanitize_campground_image(photo.image_url, photo.id)
 
-    return VisitorPhotoOut(
-        id=photo.id,
-        campground_id=photo.campground_id,
-        user_id=photo.user_id,
-        user_username=photo.user_username,
-        username=photo.user_username,
-        user_avatar=avatar,
-        avatar_url=avatar,
-        media_type=photo.media_type or "photo",
-        image_url=sanitize_campground_image(photo.image_url, photo.id),
-        caption=photo.caption or "",
-        ai_tags=tags,
-        ai_media_caption=photo.ai_media_caption or "",
-        likes_count=photo.likes_count or 0,
-        comments_count=comments_count,
-        created_at=photo.created_at,
-        expires_at=photo.expires_at,
-        liked_by_me=liked_by_me,
-        comments=comments or []
-    )
+    data = photo.model_dump()
+    data.update({
+        "image_url": safe_image,
+        "user_avatar": avatar,
+        "avatar_url": avatar,
+        "comments_count": comments_count,
+        "liked_by_me": liked_by_me,
+        "comments": comments or []
+    })
+    return data
 
 # ==========================================
 # 1. Campground Visitor Stories

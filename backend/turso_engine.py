@@ -202,71 +202,20 @@ class TursoConnection:
         pass
 
 
-def init_turso_schema_and_fts():
+def init_turso_extensions_and_fts():
     """
-    Idempotent schema initialization for Turso libSQL and SQLite:
-    1. Synchronizes Campground columns (title, gallery_images, amenities, rules, etc.)
-    2. Synchronizes Comment columns (parent_comment_id, rating)
-    3. Creates visitor_photos and visitor_photo_likes tables
-    4. Adds F32_BLOB(768) vector columns and DiskANN indexes
-    5. Creates SQLite FTS5 virtual table campground_fts
-    6. Creates and seeds ui_navigation table for AI Agent
+    Synchronizes engine-specific database extensions outside standard relational migrations:
+    1. Synchronizes SQLite FTS5 virtual table campground_fts for BM25 search.
+    2. Synchronizes Turso DiskANN vector columns (F32_BLOB) and libsql_vector_idx indexes.
+    3. Seeds default UI Navigation descriptors for the AI Side Assistant.
     """
-    import sqlite3
-    logger.info("[YelpCamp Migration] Starting schema & FTS5 initialization...")
+    logger.info("[YelpCamp Extensions] Starting FTS5, vector extensions & UI navigation sync...")
 
-    ddl_statements = [
-        # 1. Campground columns
-        ("ALTER TABLE campground ADD COLUMN title TEXT DEFAULT ''", "campground.title"),
-        ("ALTER TABLE campground ADD COLUMN location TEXT DEFAULT ''", "campground.location"),
-        ("ALTER TABLE campground ADD COLUMN location_address TEXT DEFAULT ''", "campground.location_address"),
-        ("ALTER TABLE campground ADD COLUMN gallery_images TEXT DEFAULT '[]'", "campground.gallery_images"),
-        ("ALTER TABLE campground ADD COLUMN amenities TEXT DEFAULT '[]'", "campground.amenities"),
-        ("ALTER TABLE campground ADD COLUMN rules TEXT DEFAULT ''", "campground.rules"),
-        ("ALTER TABLE campground ADD COLUMN avg_rating REAL DEFAULT 0.0", "campground.avg_rating"),
-        ("ALTER TABLE campground ADD COLUMN ai_media_caption TEXT DEFAULT ''", "campground.ai_media_caption"),
-        ("ALTER TABLE campground ADD COLUMN community_summary TEXT DEFAULT ''", "campground.community_summary"),
-        
-        # 2. Sync title from name if title is empty
+    extension_statements = [
+        # 1. Sync title from name if title is empty
         ("UPDATE campground SET title = name WHERE (title IS NULL OR title = '') AND (name IS NOT NULL AND name != '')", "sync_title"),
 
-        # 3. Comment columns
-        ("ALTER TABLE comment ADD COLUMN parent_comment_id INTEGER", "comment.parent_comment_id"),
-        ("ALTER TABLE comment ADD COLUMN rating INTEGER", "comment.rating"),
-        ("ALTER TABLE comment ADD COLUMN created_at TEXT DEFAULT ''", "comment.created_at"),
-        ("ALTER TABLE comment ADD COLUMN photo_id INTEGER", "comment.photo_id"),
-
-        # 4. Visitor Photos table
-        ("""
-        CREATE TABLE IF NOT EXISTS visitor_photos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            campground_id INTEGER NOT NULL REFERENCES campground(id),
-            user_id INTEGER NOT NULL REFERENCES user(id),
-            user_username TEXT NOT NULL,
-            user_avatar TEXT,
-            media_type TEXT DEFAULT 'photo',
-            image_url TEXT NOT NULL,
-            caption TEXT DEFAULT '',
-            ai_tags TEXT DEFAULT '[]',
-            ai_media_caption TEXT DEFAULT '',
-            likes_count INTEGER DEFAULT 0,
-            created_at TEXT NOT NULL,
-            expires_at INTEGER
-        )
-        """, "create_visitor_photos"),
-        ("CREATE INDEX IF NOT EXISTS idx_visitor_photos_camp ON visitor_photos (campground_id)", "idx_vp_camp"),
-        ("CREATE INDEX IF NOT EXISTS idx_visitor_photos_expires ON visitor_photos (expires_at)", "idx_vp_expires"),
-
-        # 5. Visitor Photo Likes table
-        ("""
-        CREATE TABLE IF NOT EXISTS visitor_photo_likes (
-            user_id INTEGER NOT NULL REFERENCES user(id),
-            photo_id INTEGER NOT NULL REFERENCES visitor_photos(id),
-            PRIMARY KEY (user_id, photo_id)
-        )
-        """, "create_visitor_photo_likes"),
-
-        # 6. FTS5 Virtual Table for BM25 keyword matching
+        # 2. FTS5 Virtual Table for BM25 keyword matching
         ("""
         CREATE VIRTUAL TABLE IF NOT EXISTS campground_fts USING fts5(
             title, description, location, location_address, amenities, ai_media_caption,
@@ -274,46 +223,32 @@ def init_turso_schema_and_fts():
         )
         """, "create_campground_fts"),
         ("INSERT INTO campground_fts(campground_fts) VALUES('rebuild')", "rebuild_campground_fts"),
-
-        # 7. UI Navigation Map Table
-        ("""
-        CREATE TABLE IF NOT EXISTS ui_navigation (
-            id TEXT PRIMARY KEY,
-            feature_name TEXT NOT NULL,
-            route TEXT NOT NULL,
-            dom_selector TEXT NOT NULL,
-            description TEXT NOT NULL,
-            risk_level TEXT DEFAULT 'SAFE'
-        )
-        """, "create_ui_navigation"),
-        ("ALTER TABLE ui_navigation ADD COLUMN risk_level TEXT DEFAULT 'SAFE'", "ui_navigation.risk_level"),
     ]
 
-    # Apply to local SQLite database if configured
+    # Apply extensions to local SQLite database if configured
     try:
         from database import engine
         with engine.connect() as con:
-            for sql, label in ddl_statements:
+            for sql, label in extension_statements:
                 try:
                     con.exec_driver_sql(sql)
                 except Exception as e:
-                    # Column may already exist or virtual table already created
                     if "duplicate column" not in str(e).lower() and "already exists" not in str(e).lower():
-                        logger.debug(f"Local SQLite DDL notice on {label}: {e}")
+                        logger.debug(f"Local SQLite extension notice on {label}: {e}")
             con.commit()
-            logger.info("[YelpCamp Migration] Local SQLite schema verified.")
+            logger.info("[YelpCamp Extensions] Local SQLite extensions verified.")
     except Exception as e:
-        logger.warning(f"Local SQLite migration error: {e}")
+        logger.warning(f"Local SQLite extension error: {e}")
 
     # Apply to Turso Cloud if configured
     if settings.USE_TURSO and settings.TURSO_AUTH_TOKEN:
-        logger.info("[YelpCamp Migration] Applying Turso Cloud schema & vector DDL...")
-        for sql, label in ddl_statements:
+        logger.info("[YelpCamp Extensions] Applying Turso Cloud vector DDL & FTS...")
+        for sql, label in extension_statements:
             try:
                 execute_turso_raw(sql)
             except Exception as e:
                 if "duplicate column" not in str(e).lower() and "already exists" not in str(e).lower():
-                    logger.debug(f"Turso DDL notice on {label}: {e}")
+                    logger.debug(f"Turso extension notice on {label}: {e}")
 
         # Turso-specific Vector column & DiskANN indexes
         turso_vector_ddl = [
@@ -331,10 +266,13 @@ def init_turso_schema_and_fts():
                 if "duplicate column" not in str(e).lower() and "already exists" not in str(e).lower():
                     logger.debug(f"Turso vector DDL notice on {label}: {e}")
 
-        logger.info("[YelpCamp Migration] Turso Cloud schema and vector indexes verified.")
+        logger.info("[YelpCamp Extensions] Turso Cloud schema and vector indexes verified.")
 
     # Seed UI Navigation entries if empty
     seed_ui_navigation()
+
+# Backward-compatibility alias
+init_turso_schema_and_fts = init_turso_extensions_and_fts
 
 def seed_ui_navigation():
     """Seed UI Navigation descriptors for the AI Side Assistant."""

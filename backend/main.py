@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from config import settings
-from database import create_db_and_tables
+from database import apply_migrations
 from routers import auth, campgrounds, comments, social, vector_rag, visitor_photos
 from services.limiter import limiter, rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -14,11 +14,11 @@ from slowapi.middleware import SlowAPIMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Ensure tables exist
+    # Apply Alembic database migrations and extensions
     try:
-        create_db_and_tables()
+        apply_migrations()
     except Exception as e:
-        print("Database schema init notice:", e)
+        print("Database schema migration notice:", e)
     # Ensure upload directory exists
     try:
         os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional, List
-from pydantic import field_validator
+from pydantic import field_validator, field_serializer
 from sqlmodel import Field, SQLModel, Relationship
 
 # ==============================================================================
@@ -49,6 +49,17 @@ class CampgroundBase(SQLModel):
             cleaned = v.replace("$", "").strip()
             try:
                 return float(cleaned)
+            except ValueError:
+                return 0.0
+        return 0.0
+
+    @field_serializer("price", when_used="always")
+    def serialize_price(self, v):
+        if isinstance(v, (int, float)):
+            return float(v)
+        if isinstance(v, str):
+            try:
+                return float(v.replace("$", "").strip())
             except ValueError:
                 return 0.0
         return 0.0
