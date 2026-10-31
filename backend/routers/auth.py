@@ -7,7 +7,7 @@ from models import User
 from database import get_session
 from dependencies import get_current_user, is_logged_in
 from security import verify_password, get_password_hash, create_access_token
-from schemas import UserCreate, UserLogin, UserOut, GoogleLoginRequest
+from schemas import UserCreate, UserLogin, UserOut, GoogleLoginRequest, TokenResponse, AvatarUpdateResponse
 from config import settings
 from services.cloudinary_service import get_user_avatar_url, upload_user_avatar
 from services.google_auth_service import verify_google_token
@@ -27,11 +27,7 @@ def set_auth_cookie(response: Response, token: str):
         secure=is_prod
     )
 
-@router.get("/register")
-async def register_page():
-    return {"message": "Register endpoint. Send POST request with username and password."}
-
-@router.post("/register")
+@router.post("/register", response_model=TokenResponse)
 @limiter.limit(settings.RATE_LIMIT_AUTH_REGISTER)
 async def register(
     request: Request,
@@ -79,7 +75,7 @@ async def register(
         "user": {"id": new_user.id, "username": new_user.username, "avatar_url": avatar}
     }
 
-@router.post("/login")
+@router.post("/login", response_model=TokenResponse)
 @limiter.limit(settings.RATE_LIMIT_AUTH_LOGIN)
 async def login(
     request: Request,
@@ -111,8 +107,7 @@ async def login(
         "user": {"id": user.id, "username": user.username, "avatar_url": avatar}
     }
 
-@router.post("/auth/google")
-@router.post("/google")
+@router.post("/auth/google", response_model=TokenResponse)
 @limiter.limit("10/minute")
 async def google_auth(
     request: Request,
@@ -181,7 +176,6 @@ async def google_auth(
     }
 
 @router.get("/me")
-@router.get("/users/me")
 async def get_me(current_user: Optional[User] = Depends(get_current_user)):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -194,7 +188,6 @@ async def get_me(current_user: Optional[User] = Depends(get_current_user)):
     }
 
 @router.get("/users", response_model=List[UserOut])
-@router.get("/api/users", response_model=List[UserOut])
 async def get_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
@@ -221,8 +214,7 @@ async def get_user_by_id(user_id: int, db: Session = Depends(get_session)):
         avatar_url=get_user_avatar_url(user.username, user.avatar_url)
     )
 
-@router.post("/me/avatar")
-@router.post("/users/me/avatar")
+@router.post("/me/avatar", response_model=AvatarUpdateResponse)
 @limiter.limit("10/minute")
 async def update_avatar(
     request: Request,

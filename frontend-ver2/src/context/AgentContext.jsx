@@ -293,7 +293,7 @@ export function AgentProvider({ children }) {
     const runNowOrNavigate = () => {
       if (mountedAction && typeof mountedAction.handler === 'function') {
         try {
-          mountedAction.handler(actionArgs || {});
+          return mountedAction.handler(actionArgs || {});
         } catch (err) {
           console.error(`[Agent Action] Error executing ${actionId}:`, err);
         }
@@ -315,9 +315,12 @@ export function AgentProvider({ children }) {
         title: mountedAction?.feature_name || manifestEntry?.feature_name || actionId.replace(/_/g, ' '),
         description: mountedAction?.description || manifestEntry?.description || 'This action will modify, delete, or publish data.',
         args: actionArgs,
-        onConfirm: () => {
-          runNowOrNavigate();
-          setPendingApproval(null);
+        onConfirm: async () => {
+          try {
+            await runNowOrNavigate();
+          } finally {
+            setPendingApproval(null);
+          }
         },
         onCancel: () => setPendingApproval(null),
       });

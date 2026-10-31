@@ -3,14 +3,14 @@ import json
 import logging
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, BackgroundTasks, Request
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select, func, case, delete
 
-from models import Campground, User, Comment
+from models import Campground, User, Comment, Vote, VisitorPhoto, VisitorPhotoLike, Wishlist, CheckIn, CampgroundEmbedding
 from database import get_session
 from dependencies import is_logged_in, check_campground_author
 from schemas import (
-    CampgroundCreate, CampgroundUpdate, CampgroundOut, 
-    PaginatedCampgrounds, FileUploadResponse
+    CampgroundCreate, CampgroundUpdate, CampgroundOut, CampgroundCard,
+    PaginatedCampgrounds, FileUploadResponse, CommentOut
 )
 from config import settings
 from services.cloudinary_service import upload_campground_image, get_user_avatar_url
@@ -28,15 +28,14 @@ try:
 except Exception:
     pass
 
-def format_campground_out(campground: Campground) -> Dict[str, Any]:
-    """Helper to convert a Campground model to a clean dictionary matching CampgroundOut."""
-    likes = len([v for v in campground.votes if v.vote_type == 1]) if campground.votes else 0
-    dislikes = len([v for v in campground.votes if v.vote_type == -1]) if campground.votes else 0
-    author_avatar = get_user_avatar_url(
-        campground.author_username,
-        campground.author.avatar_url if campground.author else None
-    )
-
+def build_campground_out(
+    campground: Campground,
+    likes_count: int,
+    dislikes_count: int,
+    visitor_photos_count: int,
+    comments_raw: List[Comment]
+) -> CampgroundOut:
+    """Helper to construct a validated CampgroundOut schema with parsed gallery, amenities, and rules."""
     gallery_imgs = []
     if campground.gallery_images:
         try:
@@ -58,54 +57,58 @@ def format_campground_out(campground: Campground) -> Dict[str, Any]:
         except Exception:
             rules_dict = {"notes": str(campground.rules)}
 
+    author_avatar = get_user_avatar_url(
+        campground.author_username,
+        campground.author.avatar_url if campground.author else None
+    )
+
+    comments_tree = build_comment_tree(comments_raw)
+
     comments_list = [
-        {
-            "id": c.id,
-            "text": c.text,
-            "author_id": c.author_id,
-            "author_username": c.author_username,
-            "author_avatar": get_user_avatar_url(
-                c.author_username,
-                c.author_avatar or (c.author.avatar_url if c.author else None)
-            ),
-            "campground_id": c.campground_id,
-            "parent_comment_id": c.parent_comment_id,
-            "rating": c.rating,
-            "created_at": c.created_at,
-            "replies": []
-        }
-        for c in (campground.comments or [])
+        CommentOut(
+            id=c.id,
+            text=c.text,
+            author_id=c.author_id,
+            author_username=c.author_username or "",
+            author_avatar=get_user_avatar_url(c.author_username, c.author_avatar),
+            campground_id=c.campground_id,
+            parent_comment_id=c.parent_comment_id,
+            rating=c.rating,
+            created_at=c.created_at,
+            replies=[]
+        )
+        for c in comments_raw
     ]
 
     safe_image = sanitize_campground_image(campground.image, campground.id)
     safe_gallery = sanitize_gallery_images(gallery_imgs, campground.id)
 
-    return {
-        "id": campground.id,
-        "title": campground.title or "",
-        "price": float(campground.price) if campground.price is not None else 0.0,
-        "image": safe_image,
-        "description": campground.description or "",
-        "location": campground.location or "",
-        "location_address": campground.location_address or "",
-        "gallery_images": safe_gallery,
-        "amenities": amenities_list,
-        "rules": rules_dict,
-        "avg_rating": campground.avg_rating or 0.0,
-        "ai_media_caption": campground.ai_media_caption or "",
-        "community_summary": campground.community_summary or "",
-        "author_id": campground.author_id,
-        "author_username": campground.author_username,
-        "author_avatar": author_avatar,
-        "likes_count": likes,
-        "dislikes_count": dislikes,
-        "visitor_photos_count": len(campground.visitor_photos) if campground.visitor_photos else 0,
-        "comments": comments_list,
-        "comments_tree": build_comment_tree(campground.comments or [])
-    }
+    return CampgroundOut(
+        id=campground.id,
+        title=campground.title or campground.name or "",
+        name=campground.name or campground.title or "",
+        price=float(campground.price) if campground.price is not None else 0.0,
+        image=safe_image,
+        description=campground.description or "",
+        location=campground.location or "",
+        location_address=campground.location_address or "",
+        gallery_images=safe_gallery,
+        amenities=amenities_list,
+        rules=rules_dict,
+        avg_rating=float(campground.avg_rating or 0.0),
+        ai_media_caption=campground.ai_media_caption or "",
+        community_summary=campground.community_summary or "",
+        author_id=campground.author_id,
+        author_username=campground.author_username or "",
+        author_avatar=author_avatar,
+        likes_count=likes_count,
+        dislikes_count=dislikes_count,
+        visitor_photos_count=visitor_photos_count,
+        comments=comments_list,
+        comments_tree=comments_tree
+    )
 
 @router.get("", response_model=PaginatedCampgrounds)
-@router.get("/", response_model=PaginatedCampgrounds)
 async def list_campgrounds(
     search: Optional[str] = None,
     min_price: Optional[float] = None,
@@ -115,22 +118,60 @@ async def list_campgrounds(
     limit: int = Query(12, ge=1, le=100),
     db: Session = Depends(get_session)
 ):
-    """List campgrounds with native SQL search, price filtering, and pagination."""
-    query = select(Campground)
+    """
+    List campgrounds with pure database-heavy computation:
+    Single SQL query performs joins, conditional aggregations (SUM CASE WHEN),
+    sorting, and pagination directly in the database engine.
+    Zero Python in-memory mapping loops.
+    """
+    likes_col = func.coalesce(
+        func.sum(case((Vote.vote_type == 1, 1), else_=0)), 0
+    ).label("likes_count")
+
+    dislikes_col = func.coalesce(
+        func.sum(case((Vote.vote_type == -1, 1), else_=0)), 0
+    ).label("dislikes_count")
+
+    query = (
+        select(
+            Campground.id,
+            func.coalesce(func.nullif(Campground.title, ''), Campground.name, '').label("title"),
+            Campground.price,
+            Campground.image,
+            Campground.description,
+            Campground.location,
+            Campground.location_address,
+            Campground.avg_rating,
+            Campground.author_id,
+            Campground.author_username,
+            likes_col,
+            dislikes_col,
+        )
+        .outerjoin(Vote, Vote.campground_id == Campground.id)
+    )
+
+    count_query = select(func.count(Campground.id))
 
     # Search filter natively on title or description
     if search:
         search_pattern = f"%{search}%"
-        query = query.where(
+        condition = (
             (Campground.title.ilike(search_pattern)) | 
             (Campground.description.ilike(search_pattern))
         )
+        query = query.where(condition)
+        count_query = count_query.where(condition)
 
     # Native SQL price filtering
     if min_price is not None:
         query = query.where(Campground.price >= min_price)
+        count_query = count_query.where(Campground.price >= min_price)
     if max_price is not None:
         query = query.where(Campground.price <= max_price)
+        count_query = count_query.where(Campground.price <= max_price)
+
+    # Database-level grouping for aggregate vote counts
+    query = query.group_by(Campground.id)
 
     # Native SQL sorting
     if sort == "price_asc":
@@ -142,19 +183,39 @@ async def list_campgrounds(
     else:
         query = query.order_by(Campground.id.desc())
 
-    # Total count and paginated items
-    all_matched = db.exec(query).all()
-    total = len(all_matched)
+    # Fast SQL COUNT(*) in engine
+    total = db.exec(count_query).one() or 0
     start = (page - 1) * limit
-    paginated_records = db.exec(query.offset(start).limit(limit)).all()
+    paginated_rows = db.exec(query.offset(start).limit(limit)).all()
     total_pages = (total + limit - 1) // limit if total > 0 else 1
 
+    # Backend operates strictly as an I/O machine streaming SQL rows into CampgroundCard
+    items = [
+        CampgroundCard(
+            id=r.id,
+            title=r.title or "",
+            price=float(r.price) if r.price is not None else 0.0,
+            image=r.image or "",
+            description=r.description or "",
+            location=r.location or "",
+            location_address=r.location_address or "",
+            avg_rating=float(r.avg_rating or 0.0),
+            author_id=r.author_id,
+            author_username=r.author_username or "",
+            likes_count=r.likes_count,
+            dislikes_count=r.dislikes_count,
+        )
+        for r in paginated_rows
+    ]
+
     return PaginatedCampgrounds(
-        items=[format_campground_out(c) for c in paginated_records],
+        items=items,
         total=total,
         page=page,
         limit=limit,
-        total_pages=total_pages
+        total_pages=total_pages,
+        has_next=page < total_pages,
+        has_prev=page > 1
     )
 
 @router.post("/upload", response_model=FileUploadResponse)
@@ -171,13 +232,12 @@ async def upload_image(
         raise HTTPException(status_code=400, detail="Invalid file format. Allowed: JPG, PNG, WEBP, GIF.")
 
     cdn_url = upload_campground_image(file.file)
-    return {
-        "url": cdn_url,
-        "filename": file.filename
-    }
+    return FileUploadResponse(
+        url=cdn_url,
+        filename=file.filename
+    )
 
 @router.post("", response_model=CampgroundOut, status_code=201)
-@router.post("/", response_model=CampgroundOut, status_code=201)
 @limiter.limit(settings.RATE_LIMIT_CONTENT_CREATE)
 async def create_campground(
     request: Request,
@@ -186,13 +246,14 @@ async def create_campground(
     db: Session = Depends(get_session),
     current_user: User = Depends(is_logged_in)
 ):
-    """Create a new campground with typed JSON schema."""
+    """Create a new campground with typed SQLModel schema."""
     from services.multimodal_embedder import process_campground_ingestion
 
     clean_image = sanitize_campground_image(data.image, None)
     clean_gallery = sanitize_gallery_images(data.gallery_images, None)
 
     new_campground = Campground(
+        name=data.title,
         title=data.title,
         image=clean_image,
         price=data.price,
@@ -210,15 +271,63 @@ async def create_campground(
     db.refresh(new_campground)
 
     background_tasks.add_task(process_campground_ingestion, new_campground.id)
-    return format_campground_out(new_campground)
+    return build_campground_out(
+        campground=new_campground,
+        likes_count=0,
+        dislikes_count=0,
+        visitor_photos_count=0,
+        comments_raw=[]
+    )
 
 @router.get("/{id}", response_model=CampgroundOut)
 async def get_campground(id: int, db: Session = Depends(get_session)):
-    """Retrieve full campsite details."""
-    campground = db.get(Campground, id)
-    if not campground:
+    """
+    Retrieve full campsite details with metrics calculated in the database engine:
+    likes, dislikes, and visitor photos are counted via SQL scalar subqueries.
+    """
+    likes_sub = (
+        select(func.count(Vote.user_id))
+        .where(Vote.campground_id == id, Vote.vote_type == 1)
+        .scalar_subquery()
+    )
+    dislikes_sub = (
+        select(func.count(Vote.user_id))
+        .where(Vote.campground_id == id, Vote.vote_type == -1)
+        .scalar_subquery()
+    )
+    stories_sub = (
+        select(func.count(VisitorPhoto.id))
+        .where(VisitorPhoto.campground_id == id)
+        .scalar_subquery()
+    )
+
+    row = db.exec(
+        select(
+            Campground,
+            func.coalesce(likes_sub, 0).label("likes_count"),
+            func.coalesce(dislikes_sub, 0).label("dislikes_count"),
+            func.coalesce(stories_sub, 0).label("visitor_photos_count"),
+        ).where(Campground.id == id)
+    ).first()
+
+    if not row:
         raise HTTPException(status_code=404, detail="Campground not found")
-    return format_campground_out(campground)
+
+    campground, likes_cnt, dislikes_cnt, stories_cnt = row
+
+    comments_raw = db.exec(
+        select(Comment)
+        .where(Comment.campground_id == id)
+        .order_by(Comment.created_at.asc())
+    ).all()
+
+    return build_campground_out(
+        campground=campground,
+        likes_count=likes_cnt,
+        dislikes_count=dislikes_cnt,
+        visitor_photos_count=stories_cnt,
+        comments_raw=list(comments_raw)
+    )
 
 @router.put("/{id}", response_model=CampgroundOut)
 async def update_campground(
@@ -233,6 +342,7 @@ async def update_campground(
 
     if data.title is not None:
         campground.title = data.title
+        campground.name = data.title
     if data.image is not None:
         campground.image = sanitize_campground_image(data.image, campground.id)
     if data.price is not None:
@@ -255,7 +365,34 @@ async def update_campground(
     db.refresh(campground)
 
     background_tasks.add_task(process_campground_ingestion, campground.id)
-    return format_campground_out(campground)
+
+    # Fetch metric counts from SQL engine
+    likes_sub = select(func.count(Vote.user_id)).where(Vote.campground_id == id, Vote.vote_type == 1).scalar_subquery()
+    dislikes_sub = select(func.count(Vote.user_id)).where(Vote.campground_id == id, Vote.vote_type == -1).scalar_subquery()
+    stories_sub = select(func.count(VisitorPhoto.id)).where(VisitorPhoto.campground_id == id).scalar_subquery()
+
+    row = db.exec(
+        select(
+            func.coalesce(likes_sub, 0),
+            func.coalesce(dislikes_sub, 0),
+            func.coalesce(stories_sub, 0),
+        )
+    ).first()
+    likes_cnt, dislikes_cnt, stories_cnt = row if row else (0, 0, 0)
+
+    comments_raw = db.exec(
+        select(Comment)
+        .where(Comment.campground_id == id)
+        .order_by(Comment.created_at.asc())
+    ).all()
+
+    return build_campground_out(
+        campground=campground,
+        likes_count=likes_cnt,
+        dislikes_count=dislikes_cnt,
+        visitor_photos_count=stories_cnt,
+        comments_raw=list(comments_raw)
+    )
 
 @router.delete("/{id}")
 async def delete_campground(
@@ -263,22 +400,20 @@ async def delete_campground(
     db: Session = Depends(get_session),
     campground: Campground = Depends(check_campground_author)
 ):
-    """Cascade delete campsite and all related entities with pure REST DELETE."""
-    from models import CampgroundEmbedding, Vote, Wishlist, CheckIn, VisitorPhoto, VisitorPhotoLike, Comment
-    from sqlmodel import select, delete
-
+    """
+    Cascade delete campsite and all related entities directly in the database engine.
+    Uses SQL subqueries so zero rows are pulled into Python memory before deletion.
+    """
     # 1. Delete vector embeddings
     db.exec(delete(CampgroundEmbedding).where(CampgroundEmbedding.campground_id == id))
     
-    # 2. Delete visitor photos and photo child records (likes and photo comments)
-    photos = db.exec(select(VisitorPhoto).where(VisitorPhoto.campground_id == id)).all()
-    for p in photos:
-        db.exec(delete(VisitorPhotoLike).where(VisitorPhotoLike.photo_id == p.id))
-        db.exec(delete(Comment).where(Comment.photo_id == p.id))
-        db.delete(p)
+    # 2. Delete visitor photo likes and comments using subquery predicate (zero in-memory photo fetching)
+    photo_ids_sub = select(VisitorPhoto.id).where(VisitorPhoto.campground_id == id).scalar_subquery()
+    db.exec(delete(VisitorPhotoLike).where(VisitorPhotoLike.photo_id.in_(photo_ids_sub)))
+    db.exec(delete(Comment).where(Comment.photo_id.in_(photo_ids_sub)))
+    db.exec(delete(VisitorPhoto).where(VisitorPhoto.campground_id == id))
 
-    # 3. Delete comments on campground (replies first then root comments)
-    db.exec(delete(Comment).where(Comment.campground_id == id, Comment.parent_comment_id.is_not(None)))
+    # 3. Delete comments on campground (replies and root comments)
     db.exec(delete(Comment).where(Comment.campground_id == id))
 
     # 4. Delete votes, wishlists, and check-ins

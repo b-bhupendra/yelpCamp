@@ -6,7 +6,7 @@ import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from fastapi import APIRouter, Request, Depends, HTTPException, Form, UploadFile, File, Query, BackgroundTasks
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select, func, delete
 
 from database import get_session
 from models import VisitorPhoto, VisitorPhotoLike, Campground, User, Comment
@@ -26,14 +26,13 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["visitor_photos"])
 
-def format_photo_out(
+def build_photo_out(
     photo: VisitorPhoto,
-    current_user_id: Optional[int] = None,
-    db: Optional[Session] = None,
-    liked_ids: Optional[set] = None,
-    comment_counts: Optional[Dict[int, int]] = None
-) -> Dict[str, Any]:
-    """Helper to convert a VisitorPhoto model to a clean dictionary matching VisitorPhotoOut."""
+    comments_count: int = 0,
+    liked_by_me: bool = False,
+    comments: Optional[List[CommentOut]] = None
+) -> VisitorPhotoOut:
+    """Helper to convert a VisitorPhoto model to a clean typed VisitorPhotoOut schema."""
     tags = []
     if photo.ai_tags:
         try:
@@ -41,52 +40,34 @@ def format_photo_out(
         except Exception:
             tags = []
 
-    liked_by_me = False
-    if liked_ids is not None:
-        liked_by_me = photo.id in liked_ids
-    elif current_user_id and db and photo.id:
-        like_record = db.exec(
-            select(VisitorPhotoLike).where(
-                VisitorPhotoLike.photo_id == photo.id,
-                VisitorPhotoLike.user_id == current_user_id
-            )
-        ).first()
-        liked_by_me = bool(like_record)
+    avatar = get_user_avatar_url(photo.user_username, photo.user_avatar)
 
-    comments_count = 0
-    if comment_counts is not None and photo.id in comment_counts:
-        comments_count = comment_counts[photo.id]
-    elif hasattr(photo, "comments") and photo.comments:
-        comments_count = len(photo.comments)
-    elif db and photo.id:
-        comments_count = len(db.exec(select(Comment.id).where(Comment.photo_id == photo.id)).all())
-
-    return {
-        "id": photo.id,
-        "campground_id": photo.campground_id,
-        "user_id": photo.user_id,
-        "user_username": photo.user_username,
-        "user_avatar": get_user_avatar_url(photo.user_username, photo.user_avatar),
-        "media_type": photo.media_type or "photo",
-        "image_url": sanitize_campground_image(photo.image_url, photo.id),
-        "caption": photo.caption or "",
-        "ai_tags": tags,
-        "ai_media_caption": photo.ai_media_caption or "",
-        "likes_count": photo.likes_count or 0,
-        "comments_count": comments_count,
-        "created_at": photo.created_at,
-        "expires_at": photo.expires_at,
-        "liked_by_me": liked_by_me,
-        "comments": []
-    }
-
+    return VisitorPhotoOut(
+        id=photo.id,
+        campground_id=photo.campground_id,
+        user_id=photo.user_id,
+        user_username=photo.user_username,
+        username=photo.user_username,
+        user_avatar=avatar,
+        avatar_url=avatar,
+        media_type=photo.media_type or "photo",
+        image_url=sanitize_campground_image(photo.image_url, photo.id),
+        caption=photo.caption or "",
+        ai_tags=tags,
+        ai_media_caption=photo.ai_media_caption or "",
+        likes_count=photo.likes_count or 0,
+        comments_count=comments_count,
+        created_at=photo.created_at,
+        expires_at=photo.expires_at,
+        liked_by_me=liked_by_me,
+        comments=comments or []
+    )
 
 # ==========================================
-# 1. Campground Visitor Photos & Stories
+# 1. Campground Visitor Stories
 # ==========================================
 
-@router.post("/campgrounds/{id}/stories")
-@router.post("/campgrounds/{id}/photos")
+@router.post("/campgrounds/{id}/stories", response_model=VisitorPhotoOut)
 @limiter.limit(settings.RATE_LIMIT_CONTENT_CREATE)
 async def create_visitor_photo(
     id: int,
@@ -103,7 +84,7 @@ async def create_visitor_photo(
 ):
     """
     Upload a visitor photo/story for a campground.
-    By user design, photos remain active permanently until explicitly deleted by the user,
+    Photos remain active permanently until explicitly deleted by the user,
     unless an explicit expiration TTL is set via expires_hours.
     """
     campground = db.get(Campground, id)
@@ -112,7 +93,6 @@ async def create_visitor_photo(
 
     final_image_url = None
 
-    # Check JSON body fallback
     content_type = request.headers.get("content-type", "")
     if "application/json" in content_type:
         try:
@@ -128,10 +108,8 @@ async def create_visitor_photo(
         except Exception:
             pass
 
-    # 1. Handle file upload
     if file and file.filename:
         try:
-            # Upload to Cloudinary
             final_image_url = upload_visitor_photo(file.file)
         except Exception as e:
             logger.warning(f"Cloudinary upload failed for visitor photo, saving locally: {e}")
@@ -151,7 +129,6 @@ async def create_visitor_photo(
 
     final_image_url = sanitize_campground_image(final_image_url, id)
 
-    # Expiry calculation: permanent unless explicit positive hours are passed
     expires_at = None
     if expires_hours and expires_hours > 0:
         expires_at = int(time.time()) + (expires_hours * 3600)
@@ -173,100 +150,131 @@ async def create_visitor_photo(
     db.commit()
     db.refresh(new_photo)
 
-    # Queue async background vision tagging & vector ingestion
     background_tasks.add_task(process_story_ingestion, new_photo.id)
 
-    return format_photo_out(new_photo, current_user.id, db)
+    return build_photo_out(new_photo, comments_count=0, liked_by_me=False)
 
-
-@router.get("/campgrounds/{id}/stories")
-@router.get("/campgrounds/{id}/photos")
+@router.get("/campgrounds/{id}/stories", response_model=List[VisitorPhotoOut])
 async def get_campground_photos(
     id: int,
     db: Session = Depends(get_session),
     current_user: Optional[User] = Depends(get_current_user)
 ):
-    """Retrieve all active photos/moments for a given campground."""
+    """
+    Retrieve all active photos/moments for a given campground.
+    Database-heavy: evaluates comments_count and liked_by_me in a single SQL query.
+    """
     now = int(time.time())
-    query = select(VisitorPhoto).where(
-        VisitorPhoto.campground_id == id,
-        (VisitorPhoto.expires_at == None) | (VisitorPhoto.expires_at > now)
-    ).order_by(VisitorPhoto.created_at.desc())
-
-    photos = db.exec(query).all()
     user_id = current_user.id if current_user else None
 
-    # Pre-fetch likes and comments for this batch
-    photo_ids = [p.id for p in photos if p.id]
-    liked_ids = set()
-    if user_id and photo_ids:
-        liked_ids = set(db.exec(
-            select(VisitorPhotoLike.photo_id).where(
-                VisitorPhotoLike.user_id == user_id,
-                VisitorPhotoLike.photo_id.in_(photo_ids)
-            )
-        ).all())
+    comment_sub = (
+        select(Comment.photo_id, func.count(Comment.id).label("cnt"))
+        .group_by(Comment.photo_id)
+        .subquery()
+    )
 
-    return [format_photo_out(p, user_id, db, liked_ids=liked_ids) for p in photos]
+    query = (
+        select(
+            VisitorPhoto,
+            func.coalesce(comment_sub.c.cnt, 0).label("comments_count"),
+            (VisitorPhotoLike.user_id.is_not(None)).label("liked_by_me")
+            if user_id else
+            func.coalesce(None, False).label("liked_by_me")
+        )
+        .outerjoin(comment_sub, comment_sub.c.photo_id == VisitorPhoto.id)
+    )
 
+    if user_id:
+        query = query.outerjoin(
+            VisitorPhotoLike,
+            (VisitorPhotoLike.photo_id == VisitorPhoto.id) & (VisitorPhotoLike.user_id == user_id)
+        )
+
+    query = query.where(
+        VisitorPhoto.campground_id == id,
+        (VisitorPhoto.expires_at == None) | (VisitorPhoto.expires_at > now)
+    ).order_by(VisitorPhoto.created_at.desc()).limit(50)
+
+    rows = db.exec(query).all()
+    return [
+        build_photo_out(
+            photo=r[0],
+            comments_count=r[1],
+            liked_by_me=bool(r[2])
+        )
+        for r in rows
+    ]
 
 # ==========================================
 # 2. Global Story Tray (Instagram-style)
 # ==========================================
 
-@router.get("/stories")
-@router.get("/social/stories")
+@router.get("/stories", response_model=List[VisitorStoryGroupOut])
 async def get_active_stories(
     db: Session = Depends(get_session),
     current_user: Optional[User] = Depends(get_current_user)
 ):
     """
     Returns stories grouped by user for the horizontal story bubble tray.
-    Stories stay visible until deleted by the user or expired.
+    Database-heavy: evaluates comments_count and liked_by_me in a single SQL query.
     """
     now = int(time.time())
-    statement = select(VisitorPhoto).where(
-        (VisitorPhoto.expires_at == None) | (VisitorPhoto.expires_at > now)
-    ).order_by(VisitorPhoto.created_at.desc())
-
-    photos = db.exec(statement).all()
     user_id = current_user.id if current_user else None
 
-    # Pre-fetch likes for this batch
-    photo_ids = [p.id for p in photos if p.id]
-    liked_ids = set()
-    if user_id and photo_ids:
-        liked_ids = set(db.exec(
-            select(VisitorPhotoLike.photo_id).where(
-                VisitorPhotoLike.user_id == user_id,
-                VisitorPhotoLike.photo_id.in_(photo_ids)
-            )
-        ).all())
+    comment_sub = (
+        select(Comment.photo_id, func.count(Comment.id).label("cnt"))
+        .group_by(Comment.photo_id)
+        .subquery()
+    )
 
-    # Group photos by user
-    grouped_users: Dict[int, Dict[str, Any]] = {}
-    for p in photos:
-        uid = p.user_id
+    query = (
+        select(
+            VisitorPhoto,
+            func.coalesce(comment_sub.c.cnt, 0).label("comments_count"),
+            (VisitorPhotoLike.user_id.is_not(None)).label("liked_by_me")
+            if user_id else
+            func.coalesce(None, False).label("liked_by_me")
+        )
+        .outerjoin(comment_sub, comment_sub.c.photo_id == VisitorPhoto.id)
+    )
+
+    if user_id:
+        query = query.outerjoin(
+            VisitorPhotoLike,
+            (VisitorPhotoLike.photo_id == VisitorPhoto.id) & (VisitorPhotoLike.user_id == user_id)
+        )
+
+    query = query.where(
+        (VisitorPhoto.expires_at == None) | (VisitorPhoto.expires_at > now)
+    ).order_by(VisitorPhoto.created_at.desc()).limit(40)
+
+    rows = db.exec(query).all()
+
+    grouped_users: Dict[int, VisitorStoryGroupOut] = {}
+    for photo, c_cnt, liked in rows:
+        uid = photo.user_id
+        avatar = get_user_avatar_url(photo.user_username, photo.user_avatar)
         if uid not in grouped_users:
-            grouped_users[uid] = {
-                "user_id": uid,
-                "user_username": p.user_username,
-                "user_avatar": get_user_avatar_url(p.user_username, p.user_avatar),
-                "has_unseen": True,
-                "latest_timestamp": p.created_at,
-                "photos": []
-            }
-        grouped_users[uid]["photos"].append(format_photo_out(p, user_id, db, liked_ids=liked_ids))
+            grouped_users[uid] = VisitorStoryGroupOut(
+                user_id=uid,
+                user_username=photo.user_username,
+                username=photo.user_username,
+                user_avatar=avatar,
+                avatar_url=avatar,
+                has_unseen=True,
+                latest_timestamp=photo.created_at,
+                photos=[]
+            )
+        photo_out = build_photo_out(photo=photo, comments_count=c_cnt, liked_by_me=bool(liked))
+        grouped_users[uid].photos.append(photo_out)
 
     return list(grouped_users.values())
-
 
 # ==========================================
 # 3. Story Details, Likes & Deletion
 # ==========================================
 
-@router.get("/stories/{photo_id}")
-@router.get("/photos/{photo_id}")
+@router.get("/stories/{photo_id}", response_model=VisitorPhotoOut)
 async def get_photo_detail(
     photo_id: int,
     db: Session = Depends(get_session),
@@ -278,19 +286,38 @@ async def get_photo_detail(
         raise HTTPException(status_code=404, detail="Visitor photo not found")
 
     user_id = current_user.id if current_user else None
-    photo_dict = format_photo_out(photo, user_id, db)
-    photo_dict["comments"] = build_comment_tree(photo.comments)
-    return photo_dict
+    liked_by_me = False
+    if user_id:
+        liked_by_me = bool(
+            db.exec(
+                select(VisitorPhotoLike).where(
+                    VisitorPhotoLike.photo_id == photo_id,
+                    VisitorPhotoLike.user_id == user_id
+                )
+            ).first()
+        )
 
+    comments_raw = db.exec(
+        select(Comment)
+        .where(Comment.photo_id == photo_id)
+        .order_by(Comment.created_at.asc())
+    ).all()
+    comments_tree = build_comment_tree(list(comments_raw))
+
+    return build_photo_out(
+        photo=photo,
+        comments_count=len(comments_raw),
+        liked_by_me=liked_by_me,
+        comments=comments_tree
+    )
 
 @router.delete("/stories/{photo_id}")
-@router.delete("/photos/{photo_id}")
 async def delete_visitor_photo(
     photo_id: int,
     db: Session = Depends(get_session),
     current_user: User = Depends(is_logged_in)
 ):
-    """Delete a visitor photo/story. Only the author can delete their moment."""
+    """Delete a visitor photo/story with set-based SQL deletes."""
     photo = db.get(VisitorPhoto, photo_id)
     if not photo:
         raise HTTPException(status_code=404, detail="Visitor photo not found")
@@ -298,24 +325,14 @@ async def delete_visitor_photo(
     if photo.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="You do not have permission to delete this photo")
 
-    # Cascade delete likes
-    likes = db.exec(select(VisitorPhotoLike).where(VisitorPhotoLike.photo_id == photo_id)).all()
-    for l in likes:
-        db.delete(l)
-
-    # Cascade delete comments
-    comments = db.exec(select(Comment).where(Comment.photo_id == photo_id)).all()
-    for c in comments:
-        db.delete(c)
-
+    db.exec(delete(VisitorPhotoLike).where(VisitorPhotoLike.photo_id == photo_id))
+    db.exec(delete(Comment).where(Comment.photo_id == photo_id))
     db.delete(photo)
     db.commit()
 
     return {"message": "Visitor moment deleted successfully", "photo_id": photo_id}
 
-
-@router.post("/stories/{photo_id}/like")
-@router.post("/photos/{photo_id}/like")
+@router.post("/stories/{photo_id}/like", response_model=VisitorPhotoLikeResponse)
 @limiter.limit(settings.RATE_LIMIT_SOCIAL_ACTION)
 async def toggle_photo_like(
     photo_id: int,
@@ -349,19 +366,17 @@ async def toggle_photo_like(
     db.commit()
     db.refresh(photo)
 
-    return {
-        "photo_id": photo_id,
-        "liked": liked,
-        "likes_count": photo.likes_count
-    }
-
+    return VisitorPhotoLikeResponse(
+        photo_id=photo_id,
+        liked=liked,
+        likes_count=photo.likes_count
+    )
 
 # ==========================================
 # 4. Comments & Threaded Replies on Photos
 # ==========================================
 
 @router.get("/stories/{photo_id}/comments")
-@router.get("/photos/{photo_id}/comments")
 async def get_photo_comments(
     photo_id: int,
     nested: bool = Query(True, description="Return threaded reply tree"),
@@ -380,25 +395,24 @@ async def get_photo_comments(
         return build_comment_tree(list(comments))
 
     return [
-        {
-            "id": c.id,
-            "text": c.text,
-            "parent_comment_id": c.parent_comment_id,
-            "photo_id": c.photo_id,
-            "author_id": c.author_id,
-            "author_username": c.author_username,
-            "author_avatar": get_user_avatar_url(
+        CommentOut(
+            id=c.id,
+            text=c.text,
+            parent_comment_id=c.parent_comment_id,
+            photo_id=c.photo_id,
+            author_id=c.author_id,
+            author_username=c.author_username or "",
+            author_avatar=get_user_avatar_url(
                 c.author_username,
                 c.author_avatar or (c.author.avatar_url if c.author else None)
             ),
-            "created_at": c.created_at
-        }
+            created_at=c.created_at,
+            replies=[]
+        )
         for c in comments
     ]
 
-
-@router.post("/stories/{photo_id}/comments")
-@router.post("/photos/{photo_id}/comments")
+@router.post("/stories/{photo_id}/comments", response_model=CommentOut)
 @limiter.limit("20/minute")
 async def create_photo_comment(
     photo_id: int,
@@ -437,13 +451,14 @@ async def create_photo_comment(
     db.commit()
     db.refresh(new_comment)
 
-    return {
-        "id": new_comment.id,
-        "text": new_comment.text,
-        "parent_comment_id": new_comment.parent_comment_id,
-        "photo_id": new_comment.photo_id,
-        "author_id": new_comment.author_id,
-        "author_username": new_comment.author_username,
-        "author_avatar": new_comment.author_avatar,
-        "created_at": new_comment.created_at
-    }
+    return CommentOut(
+        id=new_comment.id,
+        text=new_comment.text,
+        parent_comment_id=new_comment.parent_comment_id,
+        photo_id=new_comment.photo_id,
+        author_id=new_comment.author_id,
+        author_username=new_comment.author_username,
+        author_avatar=new_comment.author_avatar,
+        created_at=new_comment.created_at,
+        replies=[]
+    )

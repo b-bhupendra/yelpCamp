@@ -78,17 +78,27 @@ export default function CampgroundDetails() {
 
   const fetchCampground = useCallback(async () => {
     try {
-      const res = await api.get(`/api/campgrounds/${id}`);
+      const [res, statsRes] = await Promise.all([
+        api.get(`/api/campgrounds/${id}`),
+        api.get(`/api/campgrounds/${id}/stats`).catch(() => null),
+      ]);
       setCampground(res.data);
       if (res.data.is_wishlisted !== undefined) {
         setIsWishlisted(Boolean(res.data.is_wishlisted));
       }
-      const statsRes = await api.get(`/api/campgrounds/${id}/stats`);
-      setStats({
-        likes: statsRes.data.likes,
-        dislikes: statsRes.data.dislikes,
-        user_vote: statsRes.data.user_vote,
-      });
+      if (statsRes?.data) {
+        setStats({
+          likes: statsRes.data.likes ?? res.data.likes_count ?? 0,
+          dislikes: statsRes.data.dislikes ?? res.data.dislikes_count ?? 0,
+          user_vote: statsRes.data.user_vote ?? 0,
+        });
+      } else {
+        setStats({
+          likes: res.data.likes_count ?? 0,
+          dislikes: res.data.dislikes_count ?? 0,
+          user_vote: 0,
+        });
+      }
     } catch (err) {
       console.error(err);
       toast.error('Could not load campsite details.');

@@ -25,6 +25,10 @@ EXCLUDED_DIRS = {
     ".idea",
     ".vscode",
     ".agents",
+    "backend_clean_codebase",
+    "frontend_clean_codebase",
+    "yelpcamp_clean_codebase",
+    "yelpcamp_analysis",
 }
 
 EXCLUDED_EXTENSIONS = {
@@ -52,11 +56,18 @@ EXCLUDED_FILES = {
     "package-lock.json",
     "yarn.lock",
     "pnpm-lock.yaml",
+    "bun.lock",
     "yelpcamp_analysis.zip",
     "yelpcamp_clean_codebase.zip",
     "yelpcamp_llm_codebase.txt",
     "yelpcamp_llm_codebase.md",
+    "backend_llm_codebase.txt",
+    "backend_clean_codebase.zip",
+    "frontend_llm_codebase.txt",
+    "frontend_clean_codebase.zip",
     "build_llm_archive.py",
+    "build_be_llm_archive.py",
+    "build_fe_llm_archive.py",
 }
 
 LANG_MAP = {

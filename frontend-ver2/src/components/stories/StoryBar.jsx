@@ -6,6 +6,9 @@ import StoryViewerModal from './StoryViewerModal';
 import StoryUploadModal from './StoryUploadModal';
 import { useAgentAction } from '../../hooks/useAgentAction';
 
+// In-memory SWR cache for story trays
+const storiesMemoryCache = new Map();
+
 export default function StoryBar({
   campgroundId = null,
   campgroundTitle = '',
@@ -13,8 +16,11 @@ export default function StoryBar({
   onStoryUpdated,
 }) {
   const { user } = useAuth();
-  const [storyGroups, setStoryGroups] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = campgroundId ? `camp_${campgroundId}` : 'global';
+  const cachedStories = storiesMemoryCache.get(cacheKey);
+
+  const [storyGroups, setStoryGroups] = useState(cachedStories || []);
+  const [loading, setLoading] = useState(!cachedStories);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [viewerState, setViewerState] = useState({ isOpen: false, initialGroupIndex: 0 });
   const [viewedPhotoIds, setViewedPhotoIds] = useState([]);
@@ -30,7 +36,10 @@ export default function StoryBar({
   }, []);
 
   const fetchStories = useCallback(async () => {
-    setLoading(true);
+    const currentCached = storiesMemoryCache.get(cacheKey);
+    if (!currentCached) {
+      setLoading(true);
+    }
     try {
       if (campgroundId) {
         // Fetch stories for specific campground
@@ -51,7 +60,9 @@ export default function StoryBar({
           }
           userMap[uid].photos.push(p);
         }
-        setStoryGroups(Object.values(userMap));
+        const groups = Object.values(userMap);
+        storiesMemoryCache.set(cacheKey, groups);
+        setStoryGroups(groups);
       } else {
         // Global community story tray
         const res = await api.get('/api/stories');
@@ -62,15 +73,18 @@ export default function StoryBar({
           avatar_url: g.avatar_url || g.user_avatar,
           photos: g.photos || [],
         }));
+        storiesMemoryCache.set(cacheKey, normalized);
         setStoryGroups(normalized);
       }
     } catch (err) {
       console.error('Failed to load stories:', err);
-      setStoryGroups([]);
+      if (!currentCached) {
+        setStoryGroups([]);
+      }
     } finally {
       setLoading(false);
     }
-  }, [campgroundId]);
+  }, [campgroundId, cacheKey]);
 
   useEffect(() => {
     fetchStories();

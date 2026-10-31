@@ -43,6 +43,10 @@ uploads/
 *.zip
 *.pdf
 yelpcamp_llm_codebase.*
+backend_llm_codebase.*
+frontend_llm_codebase.*
+*_clean_codebase/
+*_analysis/
 
 # System & IDE
 .DS_Store

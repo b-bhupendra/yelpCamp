@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 
@@ -9,14 +9,19 @@ export default function Register() {
   const [error, setError] = useState('');
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const from = location.state?.from?.pathname
+    ? (location.state.from.pathname + (location.state.from.search || '') + (location.state.from.hash || ''))
+    : (typeof location.state?.from === 'string' ? location.state.from : '/campgrounds');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await register(username, password);
-      navigate('/campgrounds');
+      navigate(from, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed. Try a different username.');
+      setError(err.response?.data?.error || err.response?.data?.detail || 'Registration failed. Try a different username.');
     }
   };
 

@@ -70,7 +70,20 @@ function TiltCard({ children, className = "" }) {
 }
 
 export default function CampgroundList() {
-  const { campgrounds, loading, error, search, setSearch, total, refetch } = useCampgrounds();
+  const {
+    campgrounds,
+    loading,
+    error,
+    search,
+    setSearch,
+    total,
+    page,
+    setPage,
+    totalPages,
+    hasNext,
+    hasPrev,
+    refetch
+  } = useCampgrounds();
 
   return (
     <div className="min-h-screen relative bg-background">
@@ -170,8 +183,8 @@ export default function CampgroundList() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 md:gap-8">
             {campgrounds.map((camp) => {
-              const likes = camp.votes?.filter((v) => v.vote_type === 1).length || 0;
-              const dislikes = camp.votes?.filter((v) => v.vote_type === -1).length || 0;
+              const likes = camp.likes_count ?? camp.votes?.filter((v) => v.vote_type === 1).length ?? 0;
+              const dislikes = camp.dislikes_count ?? camp.votes?.filter((v) => v.vote_type === -1).length ?? 0;
               return (
                 <TiltCard key={camp.id} className="h-full">
                   <Link
@@ -228,6 +241,37 @@ export default function CampgroundList() {
                 </TiltCard>
               );
             })}
+          </div>
+        )}
+
+        {/* Official Pagination Controls */}
+        {!loading && totalPages > 1 && (
+          <div className="mt-14 flex flex-col sm:flex-row justify-center items-center gap-4">
+            <button
+              onClick={() => {
+                setPage(page - 1);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              disabled={!hasPrev || loading}
+              aria-label="Previous Page"
+              className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border border-border bg-surface-2/80 backdrop-blur text-fg disabled:opacity-30 hover:bg-surface-3 transition-colors flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed shadow-sm"
+            >
+              <Icon.ArrowLeft size={14} /> Previous
+            </button>
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-fg-subtle px-4 py-2 rounded-xl bg-surface-1/40 border border-border/40">
+              Page <span className="text-secondary font-bold">{page}</span> of {totalPages}
+            </div>
+            <button
+              onClick={() => {
+                setPage(page + 1);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              disabled={!hasNext || loading}
+              aria-label="Next Page"
+              className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border border-border bg-surface-2/80 backdrop-blur text-fg disabled:opacity-30 hover:bg-surface-3 transition-colors flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed shadow-sm"
+            >
+              Next <Icon.ArrowRight size={14} />
+            </button>
           </div>
         )}
 

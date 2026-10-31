@@ -322,15 +322,14 @@ class MultimodalEmbedder:
 
         # Local SQLite
         try:
-            con = sqlite3.connect("database.db")
-            cur = con.cursor()
-            cur.execute("DELETE FROM campground_fts WHERE rowid = ?", (campground_id,))
-            cur.execute("""
-                INSERT INTO campground_fts (rowid, title, description, location, location_address, amenities, ai_media_caption)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (campground_id, title, description, location, location_address, amenities, ai_media_caption))
-            con.commit()
-            con.close()
+            from database import engine
+            with engine.connect() as con:
+                con.exec_driver_sql("DELETE FROM campground_fts WHERE rowid = ?", (campground_id,))
+                con.exec_driver_sql("""
+                    INSERT INTO campground_fts (rowid, title, description, location, location_address, amenities, ai_media_caption)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (campground_id, title, description, location, location_address, amenities, ai_media_caption))
+                con.commit()
         except Exception as e:
             logger.debug(f"Local FTS sync notice for camp {campground_id}: {e}")
 

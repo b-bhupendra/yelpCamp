@@ -6,6 +6,9 @@ import { AgentProvider } from './context/AgentContext';
 import { ToastProvider } from './context/ToastContext';
 import GlobalErrorBoundary from './components/layout/GlobalErrorBoundary';
 import AppLayout from './components/layout/AppLayout';
+import ProtectedRoute from './components/common/ProtectedRoute';
+
+
 
 // Route-level code-splitting for secondary views
 const Login = lazy(() => import('./pages/Login'));
@@ -44,10 +47,31 @@ function App() {
                     <Route path="/campgrounds" element={<CampgroundList />} />
                     <Route path="/explore" element={<CampgroundList />} />
                     <Route path="/index" element={<Navigate to="/campgrounds" replace />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/campgrounds/new" element={<NewCampground />} />
+                    <Route
+                      path="/dashboard"
+                      element={
+                        <ProtectedRoute>
+                          <Dashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/campgrounds/new"
+                      element={
+                        <ProtectedRoute>
+                          <NewCampground />
+                        </ProtectedRoute>
+                      }
+                    />
                     <Route path="/campgrounds/:id" element={<CampgroundDetails />} />
-                    <Route path="/campgrounds/:id/edit" element={<EditCampground />} />
+                    <Route
+                      path="/campgrounds/:id/edit"
+                      element={
+                        <ProtectedRoute>
+                          <EditCampground />
+                        </ProtectedRoute>
+                      }
+                    />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>

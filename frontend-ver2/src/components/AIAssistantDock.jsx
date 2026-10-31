@@ -143,7 +143,7 @@ export default function AIAssistantDock() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [isExecutingApproval, setIsExecutingApproval] = useState(false);
 
   const chatScrollRef = useRef(null);
 
@@ -475,19 +475,43 @@ export default function AIAssistantDock() {
                   <div className="flex items-center justify-end gap-2">
                     <button
                       type="button"
+                      disabled={isExecutingApproval}
                       onClick={pendingApproval.onCancel}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-2 hover:bg-surface-3 text-fg-subtle hover:text-fg transition-colors cursor-pointer"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-2 hover:bg-surface-3 text-fg-subtle hover:text-fg transition-colors cursor-pointer disabled:opacity-50"
                     >
                       Reject Action
                     </button>
                     <button
                       type="button"
-                      onClick={pendingApproval.onConfirm}
-                      className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-colors cursor-pointer"
+                      disabled={isExecutingApproval}
+                      onClick={async () => {
+                        if (isExecutingApproval) return;
+                        setIsExecutingApproval(true);
+                        try {
+                          await pendingApproval.onConfirm();
+                        } finally {
+                          setIsExecutingApproval(false);
+                        }
+                      }}
+                      className="relative overflow-hidden px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-80"
                     >
-                      Approve & Execute
+                      {isExecutingApproval ? (
+                        <>
+                          <div className="w-3 h-3 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                          <span>Executing...</span>
+                        </>
+                      ) : (
+                        <span>Approve &amp; Execute</span>
+                      )}
                     </button>
                   </div>
+
+                  {/* Horizontal progress bar along the bottom of the card during execution */}
+                  {isExecutingApproval && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-amber-500/20 overflow-hidden rounded-b-xl">
+                      <div className="h-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-300 animate-indeterminate-bar w-1/3 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
+                    </div>
+                  )}
                 </div>
               )}
 

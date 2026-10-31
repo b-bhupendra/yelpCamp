@@ -1,33 +1,32 @@
 import logging
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
-from pydantic import BaseModel, Field
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select, func, SQLModel, Field
 from database import get_session
-from models import Campground, CampgroundEmbedding, Comment
+from models import Campground, CampgroundEmbedding, Comment, UINavigation
 from services.rag_service import rag_service
 from services.multimodal_embedder import multimodal_embedder
 from services.vector_store import vector_store
 from services.limiter import limiter
 from config import settings
 
-from schemas import AgentInteractRequest, AgentInteractResponse
+from schemas import AgentInteractRequest, AgentInteractResponse, UINavSyncRequest
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/rag", tags=["Vector RAG & AI Chatbot"])
 agent_router = APIRouter(prefix="/agent", tags=["AI Copilot Agent"])
 
-class SearchRequest(BaseModel):
+class SearchRequest(SQLModel):
     query: str = Field(..., min_length=1, description="Natural language semantic search query")
     limit: Optional[int] = Field(default=6, ge=1, le=20)
     min_score: Optional[float] = Field(default=0.25, ge=0.0, le=1.0)
 
-class ChatMessage(BaseModel):
+class ChatMessage(SQLModel):
     role: str = Field(..., description="user or model")
     content: str = Field(..., min_length=1)
 
-class ChatRequest(BaseModel):
+class ChatRequest(SQLModel):
     message: str = Field(..., min_length=1, description="User's chat message")
     conversation_history: Optional[List[ChatMessage]] = Field(default=[])
 
@@ -68,7 +67,6 @@ def chat_with_aurora_guide(request: Request, req: ChatRequest, session: Session 
         raise HTTPException(status_code=500, detail=str(e))
 
 @agent_router.post("/interact", response_model=AgentInteractResponse)
-@router.post("/interact", response_model=AgentInteractResponse)
 @limiter.limit(settings.RATE_LIMIT_AI_INTERACT)
 async def interact_with_aurora_agent(request: Request, req: AgentInteractRequest, session: Session = Depends(get_session)):
     """
@@ -90,28 +88,18 @@ async def interact_with_aurora_agent(request: Request, req: AgentInteractRequest
         logger.error(f"Error during agent interaction: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-class UINavItem(BaseModel):
-    id: str
-    feature_name: str
-    route: str
-    dom_selector: str
-    description: str
-    risk_level: Optional[str] = "SAFE"
-    parameters: Optional[Dict[str, Any]] = None
-
-class UINavSyncRequest(BaseModel):
-    items: List[UINavItem]
-
 @agent_router.post("/sync-ui")
-@router.post("/sync-ui")
 @limiter.limit("15/minute")
-def sync_ui_navigation_manifest(request: Request, payload: UINavSyncRequest):
+def sync_ui_navigation_manifest(
+    request: Request,
+    payload: UINavSyncRequest,
+    session: Session = Depends(get_session)
+):
     """
     Zero-config FDE endpoint: receives the frontend's UI_CAPABILITY_MANIFEST,
     batch-embeds all feature descriptions with 768-d vectors, and upserts them
-    into Turso Cloud (ui_navigation) and the in-memory VectorStore cache.
+    into the database via SQLModel and the in-memory VectorStore cache.
     """
-    import sqlite3
     import json
     from turso_engine import execute_turso_raw
 
@@ -133,22 +121,30 @@ def sync_ui_navigation_manifest(request: Request, payload: UINavSyncRequest):
             "embedding": vec,
         }
 
-    # 2. Upsert into Local SQLite
+    # 2. Upsert into database using SQLModel
     try:
-        con = sqlite3.connect("database.db")
-        cur = con.cursor()
         for item in payload.items:
-            cur.execute(
-                """
-                INSERT OR REPLACE INTO ui_navigation (id, feature_name, route, dom_selector, description)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (item.id, item.feature_name, item.route, item.dom_selector, item.description),
-            )
-        con.commit()
-        con.close()
+            existing = session.get(UINavigation, item.id)
+            if existing:
+                existing.feature_name = item.feature_name
+                existing.route = item.route
+                existing.dom_selector = item.dom_selector
+                existing.description = item.description
+                existing.risk_level = item.risk_level or "SAFE"
+                session.add(existing)
+            else:
+                session.add(UINavigation(
+                    id=item.id,
+                    feature_name=item.feature_name,
+                    route=item.route,
+                    dom_selector=item.dom_selector,
+                    description=item.description,
+                    risk_level=item.risk_level or "SAFE"
+                ))
+        session.commit()
     except Exception as e:
-        logger.debug(f"Local SQLite UI sync notice: {e}")
+        session.rollback()
+        logger.debug(f"SQLModel UI sync notice: {e}")
 
     # 3. Upsert into Turso Cloud with DiskANN vector32()
     if settings.USE_TURSO and settings.TURSO_AUTH_TOKEN:

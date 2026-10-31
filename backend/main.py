@@ -74,17 +74,12 @@ if os.path.exists(upload_dir):
 async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
-# Modern Canonical REST Routers
+# Modern Canonical REST Routers (Single /api prefix contract)
 app.include_router(auth.router, prefix="/api", tags=["Auth"])
-app.include_router(auth.router, tags=["Auth Root"])
 app.include_router(campgrounds.router, prefix="/api/campgrounds", tags=["Campgrounds"])
-app.include_router(campgrounds.router, prefix="/campgrounds", tags=["Campgrounds Direct"])
 app.include_router(comments.router, prefix="/api/campgrounds/{id}/comments", tags=["Comments"])
-app.include_router(comments.router, prefix="/campgrounds/{id}/comments", tags=["Comments Direct"])
 app.include_router(social.router, prefix="/api", tags=["Social"])
-app.include_router(social.router, tags=["Social Direct"])
-app.include_router(visitor_photos.router, prefix="/api", tags=["Stories & Photos"])
-app.include_router(visitor_photos.router, tags=["Stories Direct"])
+app.include_router(visitor_photos.router, prefix="/api", tags=["Stories"])
 app.include_router(vector_rag.router, prefix="/api", tags=["Vector & RAG"])
 app.include_router(vector_rag.agent_router, prefix="/api", tags=["AI Agent"])
 

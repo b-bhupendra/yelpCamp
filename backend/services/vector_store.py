@@ -303,26 +303,24 @@ class VectorStoreService:
             # Local SQLite FTS5 fallback
             if not fts_candidates:
                 try:
-                    con = sqlite3.connect("database.db")
-                    cur = con.cursor()
-                    cur.execute("""
-                        SELECT c.id, COALESCE(c.title, c.name) as title, c.name, c.location, c.location_address,
-                               c.price, c.avg_rating, c.image, c.description, c.amenities, c.ai_media_caption, c.community_summary
-                        FROM campground_fts f
-                        JOIN campground c ON c.id = f.rowid
-                        WHERE campground_fts MATCH ? AND c.avg_rating >= ?
-                        ORDER BY bm25(campground_fts) LIMIT 15
-                    """, (fts_query, min_rating))
-                    rows = cur.fetchall()
-                    for r in rows:
-                        fts_candidates.append({
-                            "id": r[0], "title": r[1], "name": r[2], "location": r[3],
-                            "location_address": r[4], "price": str(r[5]), "avg_rating": float(r[6] or 0),
-                            "image": r[7], "description": r[8], "amenities": r[9],
-                            "ai_media_caption": r[10], "community_summary": r[11],
-                            "similarity_score": 0.70
-                        })
-                    con.close()
+                    from database import engine
+                    with engine.connect() as con:
+                        res = con.exec_driver_sql("""
+                            SELECT c.id, COALESCE(c.title, c.name) as title, c.name, c.location, c.location_address,
+                                   c.price, c.avg_rating, c.image, c.description, c.amenities, c.ai_media_caption, c.community_summary
+                            FROM campground_fts f
+                            JOIN campground c ON c.id = f.rowid
+                            WHERE campground_fts MATCH ? AND c.avg_rating >= ?
+                            ORDER BY bm25(campground_fts) LIMIT 15
+                        """, (fts_query, min_rating))
+                        for r in res.fetchall():
+                            fts_candidates.append({
+                                "id": r[0], "title": r[1], "name": r[2], "location": r[3],
+                                "location_address": r[4], "price": str(r[5]), "avg_rating": float(r[6] or 0),
+                                "image": r[7], "description": r[8], "amenities": r[9],
+                                "ai_media_caption": r[10], "community_summary": r[11],
+                                "similarity_score": 0.70
+                            })
                 except Exception as e:
                     logger.debug(f"Local FTS Stage 2 notice: {e}")
 

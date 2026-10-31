@@ -1,65 +1,86 @@
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any, Generic, TypeVar
+from sqlmodel import SQLModel, Field
+from pydantic import BaseModel, model_validator
+from models import (
+    UserBase, CampgroundBase, CommentBase, VisitorPhotoBase,
+    CheckInBase, TripBase, UINavigationBase
+)
 
-# User Schemas
-class UserCreate(BaseModel):
+T = TypeVar("T")
+
+class PaginatedResponse(SQLModel, Generic[T]):
+    items: List[T]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
+    has_next: bool
+    has_prev: bool
+
+# ==============================================================================
+# 1. USER SCHEMAS
+# ==============================================================================
+
+class UserCreate(SQLModel):
     username: str = Field(min_length=3, max_length=50)
     password: str = Field(min_length=6, max_length=128)
 
-class UserLogin(BaseModel):
+class UserLogin(SQLModel):
     username: str
     password: str
 
-class GoogleLoginRequest(BaseModel):
+class GoogleLoginRequest(SQLModel):
     token: str
 
-class UserOut(BaseModel):
+class UserOut(UserBase):
     id: int
-    username: str
-    avatar_url: Optional[str] = None
 
-class TokenResponse(BaseModel):
+class TokenResponse(SQLModel):
+    message: Optional[str] = "Successfully authenticated"
     access_token: str
     token_type: str = "bearer"
     user: UserOut
 
-class AvatarUpdateResponse(BaseModel):
+class AvatarUpdateResponse(SQLModel):
     message: str = "Avatar updated successfully"
     avatar_url: str
     user: UserOut
 
-# Comment Schemas
-class CommentCreate(BaseModel):
+# ==============================================================================
+# 2. COMMENT SCHEMAS
+# ==============================================================================
+
+class CommentCreate(SQLModel):
     text: str = Field(min_length=1, max_length=1000)
     parent_comment_id: Optional[int] = None
     rating: Optional[int] = Field(default=None, ge=1, le=5)
     photo_id: Optional[int] = None
 
-class CommentOut(BaseModel):
+class CommentOut(CommentBase):
     id: int
-    text: str
-    parent_comment_id: Optional[int] = None
-    rating: Optional[int] = None
-    photo_id: Optional[int] = None
     author_id: Optional[int] = None
-    author_username: str
+    author_username: str = ""
     author_avatar: Optional[str] = None
-    campground_id: Optional[int] = None
     created_at: Optional[str] = None
     replies: List["CommentOut"] = []
 
-# Visitor Photo & Story Schemas
-class VisitorPhotoCreate(BaseModel):
+# ==============================================================================
+# 3. VISITOR PHOTOS & STORIES SCHEMAS
+# ==============================================================================
+
+class VisitorPhotoCreate(SQLModel):
     caption: Optional[str] = ""
-    is_story: bool = False  # Permanent highlight by default; stays until user deletes it
+    is_story: bool = False
     media_type: str = "photo"
 
-class VisitorPhotoOut(BaseModel):
+class VisitorPhotoOut(SQLModel):
     id: int
     campground_id: Optional[int] = None
     user_id: int
     user_username: str
+    username: Optional[str] = None  # Frontend compatibility alias
     user_avatar: Optional[str] = None
+    avatar_url: Optional[str] = None  # Frontend compatibility alias
     media_type: str = "photo"
     image_url: str
     caption: Optional[str] = ""
@@ -72,32 +93,47 @@ class VisitorPhotoOut(BaseModel):
     liked_by_me: bool = False
     comments: List[CommentOut] = []
 
-class VisitorStoryGroupOut(BaseModel):
+    @model_validator(mode="after")
+    def populate_aliases(self):
+        if not self.username:
+            self.username = self.user_username
+        if not self.avatar_url:
+            self.avatar_url = self.user_avatar
+        return self
+
+class VisitorStoryGroupOut(SQLModel):
     user_id: int
     user_username: str
+    username: Optional[str] = None  # Frontend compatibility alias
     user_avatar: Optional[str] = None
+    avatar_url: Optional[str] = None  # Frontend compatibility alias
     has_unseen: bool = True
     latest_timestamp: str
     photos: List[VisitorPhotoOut] = []
 
-class VisitorPhotoLikeResponse(BaseModel):
+    @model_validator(mode="after")
+    def populate_aliases(self):
+        if not self.username:
+            self.username = self.user_username
+        if not self.avatar_url:
+            self.avatar_url = self.user_avatar
+        return self
+
+class VisitorPhotoLikeResponse(SQLModel):
     photo_id: int
     liked: bool
     likes_count: int
 
-# Campground Schemas
-class CampgroundCreate(BaseModel):
-    title: str = Field(..., min_length=1, max_length=100)
-    price: float = Field(default=50.0, ge=0.0)
-    image: str = Field(default="https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=800&q=80")
-    description: str = Field(default="")
-    location: Optional[str] = ""
-    location_address: Optional[str] = ""
+# ==============================================================================
+# 4. CAMPGROUND SCHEMAS
+# ==============================================================================
+
+class CampgroundCreate(CampgroundBase):
     gallery_images: List[str] = []
     amenities: List[str] = []
     rules: Optional[Dict[str, Any]] = None
 
-class CampgroundUpdate(BaseModel):
+class CampgroundUpdate(SQLModel):
     title: Optional[str] = None
     price: Optional[float] = None
     image: Optional[str] = None
@@ -108,54 +144,52 @@ class CampgroundUpdate(BaseModel):
     amenities: Optional[List[str]] = None
     rules: Optional[Dict[str, Any]] = None
 
-class CampgroundOut(BaseModel):
+class CampgroundCard(CampgroundBase):
     id: int
-    title: str
-    price: float
-    image: str
-    description: str
-    location: Optional[str] = ""
-    location_address: Optional[str] = ""
+    author_id: Optional[int] = None
+    author_username: str = ""
+    likes_count: int = 0
+    dislikes_count: int = 0
+
+class CampgroundOut(CampgroundBase):
+    id: int
     gallery_images: List[str] = []
     amenities: List[str] = []
     rules: Dict[str, Any] = {}
-    avg_rating: float = 0.0
-    ai_media_caption: Optional[str] = ""
-    community_summary: Optional[str] = ""
     author_id: Optional[int] = None
-    author_username: str
-    comments: List[CommentOut] = []
+    author_username: str = ""
+    author_avatar: Optional[str] = None
+    likes_count: int = 0
+    dislikes_count: int = 0
     visitor_photos_count: int = 0
-    likes_count: Optional[int] = 0
-    dislikes_count: Optional[int] = 0
+    comments: List[CommentOut] = []
+    comments_tree: List[CommentOut] = []
 
-class PaginatedCampgrounds(BaseModel):
-    items: List[CampgroundOut]
-    total: int
-    page: int
-    limit: int
-    total_pages: int
+class PaginatedCampgrounds(PaginatedResponse[CampgroundCard]):
+    pass
 
+# ==============================================================================
+# 5. SOCIAL & DASHBOARD SCHEMAS
+# ==============================================================================
 
-# Social Schemas
-class VoteResponse(BaseModel):
+class VoteResponse(SQLModel):
     message: str
     likes: int
     dislikes: int
     user_vote: int
 
-class WishlistToggleResponse(BaseModel):
+class WishlistToggleResponse(SQLModel):
     message: str
     is_wishlisted: bool
     wishlist_count: int
 
-class WishlistCampgroundItem(BaseModel):
+class WishlistCampgroundItem(SQLModel):
     id: int
     title: str
     image: str
     price: Optional[float] = None
 
-class DashboardResponse(BaseModel):
+class DashboardResponse(SQLModel):
     username: Optional[str] = None
     avatar_url: Optional[str] = None
     total_posts: int
@@ -164,39 +198,48 @@ class DashboardResponse(BaseModel):
     wishlist: List[WishlistCampgroundItem]
     my_campgrounds: Optional[List[Dict[str, Any]]] = []
 
-class CheckInCreate(BaseModel):
+class CheckInCreate(SQLModel):
     timestamp: Optional[str] = None
 
-class CheckInOut(BaseModel):
+class CheckInOut(SQLModel):
     id: int
     user_id: int
     username: str
     campground_id: int
     timestamp: str
 
-class TripCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=100)
+class TripCreate(TripBase):
+    pass
 
-class TripMemberAdd(BaseModel):
+class TripMemberAdd(SQLModel):
     user_id: int
 
-class TripOut(BaseModel):
+class TripOut(TripBase):
     id: int
-    name: str
     owner_id: int
     member_ids: List[int] = []
 
-class FileUploadResponse(BaseModel):
+class FileUploadResponse(SQLModel):
     url: str
     filename: str
 
-class AgentInteractRequest(BaseModel):
+# ==============================================================================
+# 6. AI COPILOT & NAVIGATION SCHEMAS
+# ==============================================================================
+
+class UINavItem(UINavigationBase):
+    parameters: Optional[Dict[str, Any]] = None
+
+class UINavSyncRequest(SQLModel):
+    items: List[UINavItem]
+
+class AgentInteractRequest(SQLModel):
     user_message: str = Field(..., min_length=1, description="Adventurer's prompt or question")
     ui_context: Optional[Dict[str, Any]] = Field(default=None, description="Active route, campground_id, modal states")
     available_actions: Optional[List[Dict[str, Any]]] = Field(default=None, description="Dynamic React callbacks executable by agent")
     chat_history: Optional[List[Dict[str, str]]] = Field(default=None, description="Previous message turns")
 
-class AgentInteractResponse(BaseModel):
+class AgentInteractResponse(SQLModel):
     reply: str
     campsite_results: List[Dict[str, Any]] = Field(default_factory=list)
     story_results: List[Dict[str, Any]] = Field(default_factory=list)

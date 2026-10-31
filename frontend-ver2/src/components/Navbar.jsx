@@ -10,6 +10,7 @@ export default function Navbar() {
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -21,8 +22,14 @@ export default function Navbar() {
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/');
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      navigate('/');
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const navLink = (to, label, id) => {
@@ -97,11 +104,21 @@ export default function Navbar() {
             <Magnetic strength={0.4}>
               <button
                 id="nav-logout-btn"
+                disabled={isLoggingOut}
                 onClick={handleLogout}
-                className="cursor-pointer inline-flex items-center gap-2 px-5 py-2.5 text-xs font-semibold tracking-wide text-fg-muted hover:text-fg border border-border hover:border-border-strong rounded-full transition-colors duration-200"
+                className="cursor-pointer inline-flex items-center gap-2 px-5 py-2.5 text-xs font-semibold tracking-wide text-fg-muted hover:text-fg border border-border hover:border-border-strong rounded-full transition-all duration-200 disabled:opacity-75 disabled:cursor-not-allowed"
               >
-                <Icon.LogOut size={15} />
-                Log out
+                {isLoggingOut ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-border border-t-secondary rounded-full animate-spin" />
+                    <span>Logging out...</span>
+                  </>
+                ) : (
+                  <>
+                    <Icon.LogOut size={15} />
+                    <span>Log out</span>
+                  </>
+                )}
               </button>
             </Magnetic>
           </div>
@@ -188,12 +205,17 @@ export default function Navbar() {
           <div className="h-px bg-border/60 my-1" />
           {user ? (
             <button
+              disabled={isLoggingOut}
               onClick={handleLogout}
-              className="cursor-pointer min-h-[48px] text-left rounded-xl px-4 py-3 text-sm font-semibold text-fg-muted hover:bg-white/5 active:bg-white/10 flex items-center justify-between transition-colors"
+              className="cursor-pointer min-h-[48px] text-left rounded-xl px-4 py-3 text-sm font-semibold text-fg-muted hover:bg-white/5 active:bg-white/10 flex items-center justify-between transition-colors disabled:opacity-75"
             >
               <span className="flex items-center gap-3">
-                <Icon.LogOut size={18} className="text-destructive" />
-                Log out ({user.username})
+                {isLoggingOut ? (
+                  <div className="w-4 h-4 border-2 border-destructive/40 border-t-destructive rounded-full animate-spin" />
+                ) : (
+                  <Icon.LogOut size={18} className="text-destructive" />
+                )}
+                <span>{isLoggingOut ? 'Logging out...' : `Log out (${user.username})`}</span>
               </span>
             </button>
           ) : (

@@ -289,20 +289,19 @@ def init_turso_schema_and_fts():
         ("ALTER TABLE ui_navigation ADD COLUMN risk_level TEXT DEFAULT 'SAFE'", "ui_navigation.risk_level"),
     ]
 
-    # Apply to local SQLite database if database.db exists
+    # Apply to local SQLite database if configured
     try:
-        con = sqlite3.connect("database.db")
-        cur = con.cursor()
-        for sql, label in ddl_statements:
-            try:
-                cur.execute(sql)
-            except Exception as e:
-                # Column may already exist or virtual table already created
-                if "duplicate column" not in str(e).lower() and "already exists" not in str(e).lower():
-                    logger.debug(f"Local SQLite DDL notice on {label}: {e}")
-        con.commit()
-        con.close()
-        logger.info("[YelpCamp Migration] Local SQLite schema verified.")
+        from database import engine
+        with engine.connect() as con:
+            for sql, label in ddl_statements:
+                try:
+                    con.exec_driver_sql(sql)
+                except Exception as e:
+                    # Column may already exist or virtual table already created
+                    if "duplicate column" not in str(e).lower() and "already exists" not in str(e).lower():
+                        logger.debug(f"Local SQLite DDL notice on {label}: {e}")
+            con.commit()
+            logger.info("[YelpCamp Migration] Local SQLite schema verified.")
     except Exception as e:
         logger.warning(f"Local SQLite migration error: {e}")
 
@@ -348,15 +347,14 @@ def seed_ui_navigation():
     ]
 
     try:
-        con = sqlite3.connect("database.db")
-        cur = con.cursor()
-        for act_id, name, route, sel, desc in core_actions:
-            cur.execute("""
-                INSERT OR IGNORE INTO ui_navigation (id, feature_name, route, dom_selector, description)
-                VALUES (?, ?, ?, ?, ?)
-            """, (act_id, name, route, sel, desc))
-        con.commit()
-        con.close()
+        from database import engine
+        with engine.connect() as con:
+            for act_id, name, route, sel, desc in core_actions:
+                con.exec_driver_sql("""
+                    INSERT OR IGNORE INTO ui_navigation (id, feature_name, route, dom_selector, description)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (act_id, name, route, sel, desc))
+            con.commit()
     except Exception as e:
         logger.debug(f"UI nav local seed notice: {e}")
 

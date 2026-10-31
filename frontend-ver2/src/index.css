@@ -157,6 +157,15 @@
   animation: mask-slide-up 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Horizontal Indeterminate Loading Bar */
+@keyframes indeterminate-bar {
+  0% { transform: translateX(-150%); }
+  100% { transform: translateX(350%); }
+}
+.animate-indeterminate-bar {
+  animation: indeterminate-bar 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
 /* Cinematic Reveal */
 .legend-reveal {
   opacity: 0;

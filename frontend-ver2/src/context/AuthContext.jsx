@@ -7,6 +7,7 @@ export const useAuth = () => useContext(AuthContext);
 
 
 export const AuthProvider = ({ children }) => {
+ 
   const [user, setUser] = useState(() => {
     try {
       const token = localStorage.getItem('yelpcamp_token');
@@ -64,6 +65,15 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAuth();
+
+    const handleAuthExpired = () => {
+      console.warn('[Auth] Session expired or unauthorized. Resetting user state.');
+      setUser(null);
+      setLoading(false);
+    };
+
+    window.addEventListener('auth:expired', handleAuthExpired);
+    return () => window.removeEventListener('auth:expired', handleAuthExpired);
   }, []);
 
   const login = async (username, password) => {

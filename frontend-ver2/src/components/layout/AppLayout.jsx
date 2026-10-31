@@ -1,10 +1,36 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../Navbar';
 import AIAssistantDock from '../AIAssistantDock';
 import CustomCursor from '../CustomCursor';
 import SmoothScroll from '../SmoothScroll';
+import { useToast } from '../../context/ToastContext';
 
 export default function AppLayout({ children }) {
+  const toast = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const onAuthExpired = () => {
+      toast.warning('Your session has expired. Please sign in to continue.', 'Session Expired');
+
+      // Check if current route is protected
+      const currentPath = location.pathname;
+      const isProtected =
+        currentPath.startsWith('/dashboard') ||
+        currentPath.startsWith('/campgrounds/new') ||
+        currentPath.endsWith('/edit');
+
+      if (isProtected) {
+        navigate('/login', { state: { from: location }, replace: true });
+      }
+    };
+
+    window.addEventListener('auth:expired', onAuthExpired);
+    return () => window.removeEventListener('auth:expired', onAuthExpired);
+  }, [toast, navigate, location]);
+
   return (
     <SmoothScroll>
       <CustomCursor />
