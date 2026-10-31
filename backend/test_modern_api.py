@@ -7,12 +7,12 @@ sys.path.insert(0, os.path.dirname(__file__))
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 from database import engine, apply_migrations
-from models import User, Campground
+from models import User, Campground, Comment, Vote, VisitorPhoto
 from security import get_password_hash, create_access_token
 from main import app
 
 def run_tests():
-    print("--- Initializing Test Environment via Alembic Migrations ---")
+    print("--- Initializing Test Environment via Alembic Migrations & Triggers ---")
     apply_migrations()
     client = TestClient(app)
 
@@ -76,22 +76,35 @@ def run_tests():
     assert updated_camp["price"] == 55.0
     print("   Success: Updated campground using PUT.")
 
-    print("\n5. Testing POST /api/campgrounds/{id}/comments")
-    comment_payload = {
-        "text": "Stunning sunset views from the ridge campsite!"
+    print("\n5. Testing POST /api/campgrounds/{id}/comments with rating (testing SQLite Trigger recalculation)")
+    comment_payload_1 = {
+        "text": "Stunning sunset views from the ridge campsite!",
+        "rating": 5
     }
-    res = client.post(f"/api/campgrounds/{camp_id}/comments", json=comment_payload, headers=auth_headers)
+    res = client.post(f"/api/campgrounds/{camp_id}/comments", json=comment_payload_1, headers=auth_headers)
     assert res.status_code in [200, 201], f"Create comment failed: {res.text}"
-    created_comment = res.json()
-    assert created_comment["text"] == comment_payload["text"]
-    comment_id = created_comment["id"]
-    print(f"   Success: Created comment ID={comment_id}")
+    created_comment_1 = res.json()
+    assert created_comment_1["rating"] == 5
+
+    comment_payload_2 = {
+        "text": "Great spot, can get breezy in the evening.",
+        "rating": 4
+    }
+    res = client.post(f"/api/campgrounds/{camp_id}/comments", json=comment_payload_2, headers=auth_headers)
+    assert res.status_code in [200, 201], f"Create comment failed: {res.text}"
+
+    # Verify that campground.avg_rating was automatically recalculated by SQLite triggers
+    res = client.get(f"/api/campgrounds/{camp_id}")
+    assert res.status_code == 200
+    camp_with_rating = res.json()
+    assert camp_with_rating["avg_rating"] == 4.5, f"Expected trigger avg_rating 4.5, got {camp_with_rating['avg_rating']}"
+    print(f"   Success: Trigger recalculated avg_rating to {camp_with_rating['avg_rating']}")
 
     print("\n6. Testing GET /api/campgrounds/{id}/comments (reply tree)")
     res = client.get(f"/api/campgrounds/{camp_id}/comments")
     assert res.status_code == 200
     comments_list = res.json()
-    assert len(comments_list) >= 1
+    assert len(comments_list) >= 2
     assert "replies" in comments_list[0]
     print(f"   Success: Retrieved comment tree with {len(comments_list)} root comments.")
 
@@ -119,20 +132,66 @@ def run_tests():
     assert any(c["id"] == camp_id for c in dash_data["my_campgrounds"])
     print(f"   Success: Dashboard retrieved. Hosted={dash_data['total_posts']}, Wishlist={dash_data['wishlist_count']}")
 
-    print("\n10. Testing DELETE /api/campgrounds/{id}")
+    print("\n10. Testing Visitor Story & Moments (SQL json_group_array)")
+    # Create a visitor story
+    story_payload = {
+        "image_url": "https://images.unsplash.com/photo-1510312305653-8ed496efae75",
+        "caption": "Sunrise over the valley from Pine Ridge!"
+    }
+    res = client.post(
+        f"/api/campgrounds/{camp_id}/stories",
+        data=story_payload,
+        headers=auth_headers
+    )
+    assert res.status_code in [200, 201], f"Story upload failed: {res.text}"
+    created_story = res.json()
+    photo_id = created_story["id"]
+    print(f"   Success: Created story ID={photo_id}")
+
+    # Test GET /api/stories (json_group_array)
+    res = client.get("/api/stories", headers=auth_headers)
+    assert res.status_code == 200
+    stories_tray = res.json()
+    assert isinstance(stories_tray, list)
+    print(f"   Success: Story tray returned {len(stories_tray)} user story groups via SQL grouping.")
+
+    # Test GET /api/me/moments
+    res = client.get("/api/me/moments", headers=auth_headers)
+    assert res.status_code == 200
+    moments = res.json()
+    assert any(m["id"] == photo_id for m in moments)
+    print(f"   Success: /api/me/moments returned {len(moments)} moments.")
+
+    # Test Story Like Toggle
+    res = client.post(f"/api/stories/{photo_id}/like", headers=auth_headers)
+    assert res.status_code == 200
+    assert res.json()["liked"] is True
+    print("   Success: Story like toggled.")
+
+    print("\n11. Testing Atomic Cascade DELETE /api/campgrounds/{id}")
     res = client.delete(f"/api/campgrounds/{camp_id}", headers=auth_headers)
     assert res.status_code == 200
     assert res.json()["message"] == "Campground deleted successfully"
-    print("   Success: Campground deleted via DELETE.")
+    print("   Success: Campground deleted via single-statement DELETE.")
 
-    print("\n11. Verifying 404 after deletion")
-    res = client.get(f"/api/campgrounds/{camp_id}")
-    assert res.status_code == 404
-    print("   Success: Confirmed 404 on deleted campsite.")
+    print("\n12. Verifying Native Cascade Deletion in DB Engine")
+    with Session(engine) as session:
+        c = session.get(Campground, camp_id)
+        assert c is None
+        # Verify cascaded comments
+        remaining_comments = session.exec(select(Comment).where(Comment.campground_id == camp_id)).all()
+        assert len(remaining_comments) == 0, f"Expected 0 comments after cascade, found {len(remaining_comments)}"
+        # Verify cascaded votes
+        remaining_votes = session.exec(select(Vote).where(Vote.campground_id == camp_id)).all()
+        assert len(remaining_votes) == 0, f"Expected 0 votes after cascade, found {len(remaining_votes)}"
+        # Verify cascaded visitor photos
+        remaining_photos = session.exec(select(VisitorPhoto).where(VisitorPhoto.campground_id == camp_id)).all()
+        assert len(remaining_photos) == 0, f"Expected 0 photos after cascade, found {len(remaining_photos)}"
+    print("   Success: Verified database engine cleanly cascaded all child records to 0 rows.")
 
-    print("\n==========================================")
-    print("ALL MODERN REST API TESTS PASSED CLEANLY!")
-    print("==========================================")
+    print("\n=======================================================")
+    print("ALL MODERN SOLID & SQL-FIRST INTEGRATION TESTS PASSED!")
+    print("=======================================================")
 
 if __name__ == "__main__":
     run_tests()

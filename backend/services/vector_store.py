@@ -625,12 +625,12 @@ class VectorStoreService:
             match_pct = max(0, min(100, round((score + 1.0) / 2.0 * 100, 1) if score < 1.0 else round(score * 100, 1)))
             results.append({
                 "id": camp.id,
-                "name": camp.title or camp.name or "",
-                "title": camp.title or camp.name or "",
+                "name": camp.title,
+                "title": camp.title,
                 "price": camp.price,
                 "image": camp.image,
                 "description": camp.description,
-                "author_username": camp.author_username,
+                "author_username": camp.author.username if camp.author else "",
                 "similarity_score": round(score, 4),
                 "match_percentage": match_pct,
                 "summary": self._cache_summaries.get(cid, "")

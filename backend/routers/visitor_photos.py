@@ -1,15 +1,13 @@
 import os
 import time
-import json
 import uuid
 import logging
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timezone
 from fastapi import APIRouter, Request, Depends, HTTPException, Form, UploadFile, File, Query, BackgroundTasks
-from sqlmodel import Session, select, func, delete
+from sqlmodel import Session
 
 from database import get_session
-from models import VisitorPhoto, VisitorPhotoLike, Campground, User, Comment
+from models import VisitorPhoto, Campground, User, Comment
 from dependencies import get_current_user, is_logged_in
 from schemas import (
     VisitorPhotoOut, VisitorPhotoCreate, VisitorPhotoLikeResponse,
@@ -19,7 +17,8 @@ from services.cloudinary_service import upload_visitor_photo, get_user_avatar_ur
 from services.multimodal_embedder import process_story_ingestion
 from services.limiter import limiter
 from services.image_validator import sanitize_campground_image
-from routers.comments import build_comment_tree
+from repositories.story_repo import story_repo
+from repositories.comment_repo import comment_repo
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -33,8 +32,8 @@ def build_photo_out(
     comments: Optional[List[CommentOut]] = None,
     campground_title: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Helper returning dictionary serialized directly by FastAPI's response_model=VisitorPhotoOut."""
-    avatar = get_user_avatar_url(photo.user_username, photo.user_avatar)
+    """Helper preserving legacy signature if called by external modules."""
+    avatar = get_user_avatar_url(getattr(photo, "user_username", "") or "", getattr(photo, "user_avatar", None))
     safe_image = sanitize_campground_image(photo.image_url, photo.id)
 
     data = photo.model_dump()
@@ -45,9 +44,7 @@ def build_photo_out(
         "comments_count": comments_count,
         "liked_by_me": liked_by_me,
         "comments": comments or [],
-        "campground_title": campground_title if campground_title is not None else (
-            photo.campground.title if getattr(photo, "campground", None) else ""
-        )
+        "campground_title": campground_title or ""
     })
     return data
 
@@ -117,160 +114,54 @@ async def create_visitor_photo(
 
     final_image_url = sanitize_campground_image(final_image_url, id)
 
-    expires_at = None
-    if expires_hours and expires_hours > 0:
-        expires_at = int(time.time()) + (expires_hours * 3600)
-
-    user_avatar = get_user_avatar_url(current_user.username, current_user.avatar_url)
-
-    new_photo = VisitorPhoto(
+    new_photo = story_repo.create(
+        session=db,
         campground_id=id,
         user_id=current_user.id,
-        user_username=current_user.username,
-        user_avatar=user_avatar,
-        media_type=media_type,
         image_url=final_image_url,
         caption=caption or "",
-        likes_count=0,
-        expires_at=expires_at
+        media_type=media_type,
+        expires_hours=expires_hours
     )
-    db.add(new_photo)
-    db.commit()
-    db.refresh(new_photo)
 
     background_tasks.add_task(process_story_ingestion, new_photo.id)
 
-    camp_title = campground.title or campground.name or ""
-    return build_photo_out(new_photo, comments_count=0, liked_by_me=False, campground_title=camp_title)
+    res = story_repo.get_by_id(db, new_photo.id, current_user.id)
+    if not res:
+        raise HTTPException(status_code=500, detail="Failed to retrieve created photo")
+    return res
 
 @router.get("/campgrounds/{id}/stories", response_model=List[VisitorPhotoOut])
-async def get_campground_photos(
+def get_campground_photos(
     id: int,
     db: Session = Depends(get_session),
     current_user: Optional[User] = Depends(get_current_user)
 ):
     """
     Retrieve all active photos/moments for a given campground.
-    Database-heavy: evaluates comments_count, liked_by_me, and campground_title in a single SQL query.
+    Evaluates comments_count, liked_by_me, and campground_title in a single SQL query via repository.
     """
-    now = int(time.time())
     user_id = current_user.id if current_user else None
-
-    comment_sub = (
-        select(Comment.photo_id, func.count(Comment.id).label("cnt"))
-        .group_by(Comment.photo_id)
-        .subquery()
-    )
-
-    query = (
-        select(
-            VisitorPhoto,
-            func.coalesce(comment_sub.c.cnt, 0).label("comments_count"),
-            (VisitorPhotoLike.user_id.is_not(None)).label("liked_by_me")
-            if user_id else
-            func.coalesce(None, False).label("liked_by_me"),
-            func.coalesce(Campground.title, Campground.name, "").label("campground_title")
-        )
-        .outerjoin(comment_sub, comment_sub.c.photo_id == VisitorPhoto.id)
-        .outerjoin(Campground, Campground.id == VisitorPhoto.campground_id)
-    )
-
-    if user_id:
-        query = query.outerjoin(
-            VisitorPhotoLike,
-            (VisitorPhotoLike.photo_id == VisitorPhoto.id) & (VisitorPhotoLike.user_id == user_id)
-        )
-
-    query = query.where(
-        VisitorPhoto.campground_id == id,
-        (VisitorPhoto.expires_at == None) | (VisitorPhoto.expires_at > now)
-    ).order_by(VisitorPhoto.created_at.desc()).limit(50)
-
-    rows = db.exec(query).all()
-    return [
-        build_photo_out(
-            photo=r[0],
-            comments_count=r[1],
-            liked_by_me=bool(r[2]),
-            campground_title=r[3] or ""
-        )
-        for r in rows
-    ]
+    return story_repo.get_campground_photos(db, id, user_id)
 
 # ==========================================
 # 2. Global Story Tray & User Moments
 # ==========================================
 
 @router.get("/stories", response_model=List[VisitorStoryGroupOut])
-async def get_active_stories(
+def get_active_stories(
     db: Session = Depends(get_session),
     current_user: Optional[User] = Depends(get_current_user)
 ):
     """
     Returns stories grouped by user for the horizontal story bubble tray.
-    Database-heavy: evaluates comments_count and liked_by_me in a single SQL query.
+    Grouped directly in SQLite engine via json_group_array(json_object(...)).
     """
-    now = int(time.time())
     user_id = current_user.id if current_user else None
-
-    comment_sub = (
-        select(Comment.photo_id, func.count(Comment.id).label("cnt"))
-        .group_by(Comment.photo_id)
-        .subquery()
-    )
-
-    query = (
-        select(
-            VisitorPhoto,
-            func.coalesce(comment_sub.c.cnt, 0).label("comments_count"),
-            (VisitorPhotoLike.user_id.is_not(None)).label("liked_by_me")
-            if user_id else
-            func.coalesce(None, False).label("liked_by_me"),
-            func.coalesce(Campground.title, Campground.name, "").label("campground_title")
-        )
-        .outerjoin(comment_sub, comment_sub.c.photo_id == VisitorPhoto.id)
-        .outerjoin(Campground, Campground.id == VisitorPhoto.campground_id)
-    )
-
-    if user_id:
-        query = query.outerjoin(
-            VisitorPhotoLike,
-            (VisitorPhotoLike.photo_id == VisitorPhoto.id) & (VisitorPhotoLike.user_id == user_id)
-        )
-
-    query = query.where(
-        (VisitorPhoto.expires_at == None) | (VisitorPhoto.expires_at > now)
-    ).order_by(VisitorPhoto.created_at.desc()).limit(40)
-
-    rows = db.exec(query).all()
-
-    grouped_users: Dict[int, VisitorStoryGroupOut] = {}
-    for photo, c_cnt, liked, c_title in rows:
-        uid = photo.user_id
-        avatar = get_user_avatar_url(photo.user_username, photo.user_avatar)
-        if uid not in grouped_users:
-            grouped_users[uid] = VisitorStoryGroupOut(
-                user_id=uid,
-                user_username=photo.user_username,
-                username=photo.user_username,
-                user_avatar=avatar,
-                avatar_url=avatar,
-                has_unseen=True,
-                latest_timestamp=photo.created_at,
-                photos=[]
-            )
-        photo_out = build_photo_out(
-            photo=photo,
-            comments_count=c_cnt,
-            liked_by_me=bool(liked),
-            campground_title=c_title or ""
-        )
-        grouped_users[uid].photos.append(photo_out)
-
-    return list(grouped_users.values())
+    return story_repo.get_active_story_tray(db, user_id)
 
 @router.get("/me/moments", response_model=List[VisitorPhotoOut])
-async def get_my_moments(
+def get_my_moments(
     db: Session = Depends(get_session),
     current_user: User = Depends(is_logged_in)
 ):
@@ -278,92 +169,32 @@ async def get_my_moments(
     Retrieve all visitor photos/moments created by the authenticated user,
     with comments_count, liked_by_me, and campground_title computed in SQL.
     """
-    comment_sub = (
-        select(Comment.photo_id, func.count(Comment.id).label("cnt"))
-        .group_by(Comment.photo_id)
-        .subquery()
-    )
-
-    query = (
-        select(
-            VisitorPhoto,
-            func.coalesce(comment_sub.c.cnt, 0).label("comments_count"),
-            (VisitorPhotoLike.user_id.is_not(None)).label("liked_by_me"),
-            func.coalesce(Campground.title, Campground.name, "").label("campground_title")
-        )
-        .outerjoin(comment_sub, comment_sub.c.photo_id == VisitorPhoto.id)
-        .outerjoin(
-            VisitorPhotoLike,
-            (VisitorPhotoLike.photo_id == VisitorPhoto.id) & (VisitorPhotoLike.user_id == current_user.id)
-        )
-        .outerjoin(Campground, Campground.id == VisitorPhoto.campground_id)
-        .where(VisitorPhoto.user_id == current_user.id)
-        .order_by(VisitorPhoto.created_at.desc())
-    )
-
-    rows = db.exec(query).all()
-    return [
-        build_photo_out(
-            photo=r[0],
-            comments_count=r[1],
-            liked_by_me=bool(r[2]),
-            campground_title=r[3] or ""
-        )
-        for r in rows
-    ]
+    return story_repo.get_user_moments(db, current_user.id)
 
 # ==========================================
 # 3. Story Details, Likes & Deletion
 # ==========================================
 
 @router.get("/stories/{photo_id}", response_model=VisitorPhotoOut)
-async def get_photo_detail(
+def get_photo_detail(
     photo_id: int,
     db: Session = Depends(get_session),
     current_user: Optional[User] = Depends(get_current_user)
 ):
-    """Retrieve a single photo/story with its full comment hierarchy."""
-    photo = db.get(VisitorPhoto, photo_id)
-    if not photo:
-        raise HTTPException(status_code=404, detail="Visitor photo not found")
-
+    """Retrieve a single photo/story with its full comment hierarchy via repository."""
     user_id = current_user.id if current_user else None
-    liked_by_me = False
-    if user_id:
-        liked_by_me = bool(
-            db.exec(
-                select(VisitorPhotoLike).where(
-                    VisitorPhotoLike.photo_id == photo_id,
-                    VisitorPhotoLike.user_id == user_id
-                )
-            ).first()
-        )
-
-    comments_raw = db.exec(
-        select(Comment)
-        .where(Comment.photo_id == photo_id)
-        .order_by(Comment.created_at.asc())
-    ).all()
-    comments_tree = build_comment_tree(list(comments_raw))
-
-    campground = db.get(Campground, photo.campground_id) if photo.campground_id else None
-    camp_title = (campground.title or campground.name) if campground else ""
-
-    return build_photo_out(
-        photo=photo,
-        comments_count=len(comments_raw),
-        liked_by_me=liked_by_me,
-        comments=comments_tree,
-        campground_title=camp_title
-    )
+    photo_out = story_repo.get_by_id(db, photo_id, user_id)
+    if not photo_out:
+        raise HTTPException(status_code=404, detail="Visitor photo not found")
+    return photo_out
 
 @router.delete("/stories/{photo_id}")
-async def delete_visitor_photo(
+def delete_visitor_photo(
     photo_id: int,
     db: Session = Depends(get_session),
     current_user: User = Depends(is_logged_in)
 ):
-    """Delete a visitor photo/story with set-based SQL deletes."""
+    """Delete a visitor photo/story with atomic cascade delete in database engine."""
     photo = db.get(VisitorPhoto, photo_id)
     if not photo:
         raise HTTPException(status_code=404, detail="Visitor photo not found")
@@ -371,16 +202,12 @@ async def delete_visitor_photo(
     if photo.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="You do not have permission to delete this photo")
 
-    db.exec(delete(VisitorPhotoLike).where(VisitorPhotoLike.photo_id == photo_id))
-    db.exec(delete(Comment).where(Comment.photo_id == photo_id))
-    db.delete(photo)
-    db.commit()
-
+    story_repo.delete(db, photo)
     return {"message": "Visitor moment deleted successfully", "photo_id": photo_id}
 
 @router.post("/stories/{photo_id}/like", response_model=VisitorPhotoLikeResponse)
 @limiter.limit(settings.RATE_LIMIT_SOCIAL_ACTION)
-async def toggle_photo_like(
+def toggle_photo_like(
     photo_id: int,
     request: Request,
     db: Session = Depends(get_session),
@@ -391,39 +218,14 @@ async def toggle_photo_like(
     if not photo:
         raise HTTPException(status_code=404, detail="Visitor photo not found")
 
-    existing_like = db.exec(
-        select(VisitorPhotoLike).where(
-            VisitorPhotoLike.user_id == current_user.id,
-            VisitorPhotoLike.photo_id == photo_id
-        )
-    ).first()
-
-    if existing_like:
-        db.delete(existing_like)
-        photo.likes_count = max(0, (photo.likes_count or 0) - 1)
-        liked = False
-    else:
-        new_like = VisitorPhotoLike(user_id=current_user.id, photo_id=photo_id)
-        db.add(new_like)
-        photo.likes_count = (photo.likes_count or 0) + 1
-        liked = True
-
-    db.add(photo)
-    db.commit()
-    db.refresh(photo)
-
-    return VisitorPhotoLikeResponse(
-        photo_id=photo_id,
-        liked=liked,
-        likes_count=photo.likes_count
-    )
+    return story_repo.toggle_like(db, photo_id, current_user.id)
 
 # ==========================================
 # 4. Comments & Threaded Replies on Photos
 # ==========================================
 
 @router.get("/stories/{photo_id}/comments")
-async def get_photo_comments(
+def get_photo_comments(
     photo_id: int,
     nested: bool = Query(True, description="Return threaded reply tree"),
     db: Session = Depends(get_session)
@@ -433,34 +235,11 @@ async def get_photo_comments(
     if not photo:
         raise HTTPException(status_code=404, detail="Visitor photo not found")
 
-    comments = db.exec(
-        select(Comment).where(Comment.photo_id == photo_id).order_by(Comment.created_at.asc())
-    ).all()
-
-    if nested:
-        return build_comment_tree(list(comments))
-
-    return [
-        CommentOut(
-            id=c.id,
-            text=c.text,
-            parent_comment_id=c.parent_comment_id,
-            photo_id=c.photo_id,
-            author_id=c.author_id,
-            author_username=c.author_username or "",
-            author_avatar=get_user_avatar_url(
-                c.author_username,
-                c.author_avatar or (c.author.avatar_url if c.author else None)
-            ),
-            created_at=c.created_at,
-            replies=[]
-        )
-        for c in comments
-    ]
+    return comment_repo.get_photo_comment_tree(db, photo_id)
 
 @router.post("/stories/{photo_id}/comments", response_model=CommentOut)
 @limiter.limit("20/minute")
-async def create_photo_comment(
+def create_photo_comment(
     photo_id: int,
     request: Request,
     comment_data: CommentCreate,
@@ -483,28 +262,23 @@ async def create_photo_comment(
         if not parent or parent.photo_id != photo_id:
             raise HTTPException(status_code=400, detail="Parent reply does not exist for this photo")
 
-    author_avatar = get_user_avatar_url(current_user.username, current_user.avatar_url)
-
-    new_comment = Comment(
-        text=text,
-        parent_comment_id=parent_comment_id,
-        photo_id=photo_id,
+    new_comment = comment_repo.create(
+        session=db,
         author_id=current_user.id,
-        author_username=current_user.username,
-        author_avatar=author_avatar
+        text=text,
+        photo_id=photo_id,
+        parent_comment_id=parent_comment_id
     )
-    db.add(new_comment)
-    db.commit()
-    db.refresh(new_comment)
 
+    avatar = get_user_avatar_url(current_user.username, current_user.avatar_url)
     return CommentOut(
         id=new_comment.id,
         text=new_comment.text,
         parent_comment_id=new_comment.parent_comment_id,
         photo_id=new_comment.photo_id,
         author_id=new_comment.author_id,
-        author_username=new_comment.author_username,
-        author_avatar=new_comment.author_avatar,
+        author_username=current_user.username,
+        author_avatar=avatar,
         created_at=new_comment.created_at,
         replies=[]
     )

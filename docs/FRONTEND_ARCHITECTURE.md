@@ -235,3 +235,4 @@ The user dashboard provides a unified view across 3 dedicated tabs:
 * **Build Command:** `npm run build` (`vite build`).
 * **Output:** Static HTML/JS/CSS assets with gzip and Brotli pre-compression.
 * **Production URL:** [`https://ycamp.vercel.app`](https://ycamp.vercel.app)
+

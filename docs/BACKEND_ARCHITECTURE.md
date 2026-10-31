@@ -255,3 +255,4 @@ class AgentLLMOutput(BaseModel):
 * **Hosting:** Google Cloud Run (Asia-South1, Mumbai region).
 * **Execution:** Unprivileged container instance with automatic concurrency scaling and libSQL edge connectivity.
 * **Live Service Endpoint:** [`https://yelpcamp-api-131143882098.asia-south1.run.app`](https://yelpcamp-api-131143882098.asia-south1.run.app)
+

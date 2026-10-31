@@ -25,18 +25,24 @@
 backend/
 ├── main.py                     # App factory, lifespan startup, CORS, middleware, route mounting
 ├── config.py                   # Pydantic BaseSettings loading from .env
-├── database.py                 # Engine factory (Turso vs SQLite), session generator, table init
-├── models.py                   # SQLModel relational database models
-├── schemas.py                  # Pydantic request/response validation schemas
+├── database.py                 # Engine factory (Turso vs SQLite), triggers init, Alembic migrations
+├── models.py                   # 3NF SQLModel relational database models with ON DELETE CASCADE
+├── schemas.py                  # Pydantic request/response validation schemas & computed fields
 ├── security.py                 # Password hashing (bcrypt) & JWT encode/decode
 ├── dependencies.py             # Auth dependencies (get_current_user, is_logged_in, check_author)
 ├── turso_engine.py             # Custom DBAPI / cursor adapter for Turso Cloud HTTP v2 pipeline
-├── routers/                    # Modular API route controllers
+├── repositories/               # SOLID Repository Pattern (pure SQL offload & aggregations)
+│   ├── __init__.py             # Repository exports
+│   ├── campground_repo.py      # Paginated search, single-pass metrics, cascade delete
+│   ├── comment_repo.py         # Threaded recursive trees, author map hydration
+│   ├── story_repo.py           # json_group_array(json_object(...)) grouping, moments
+│   └── social_repo.py          # Atomic voting, wishlist toggling, dashboard summaries
+├── routers/                    # Ultra-thin route controllers (threadpooled via def)
 │   ├── auth.py                 # Register, login, logout, Google OAuth, /api/me
-│   ├── campgrounds.py          # CRUD campsites, fast pagination, batched vote aggregation
-│   ├── comments.py             # Nested / threaded comments on campgrounds & photos
+│   ├── campgrounds.py          # CRUD campsites, pagination, image upload
+│   ├── comments.py             # Threaded comments on campgrounds
 │   ├── social.py               # Upvotes/downvotes, wishlists, check-ins, trips, dashboard
-│   ├── visitor_photos.py       # Backcountry moments, 24h stories, photo likes, batch comments
+│   ├── visitor_photos.py       # Backcountry moments, 24h stories, photo likes & comments
 │   └── vector_rag.py           # Vector search, RAG chat, AI Co-Pilot agent interaction & UI sync
 ├── services/                   # Business logic and external service clients
 │   ├── cloudinary_service.py   # Cloudinary image upload, thumbnailing, DiceBear fallback avatars
@@ -75,13 +81,13 @@ erDiagram
 
 ### Key Models:
 * **`User`**: `id`, `username`, `hashed_password`, `avatar_url`. Relationships: `campgrounds`, `comments`, `wishlist`, `check_ins`, `votes`, `visitor_photos`.
-* **`Campground`**: `id`, `title`, `price`, `image`, `description`, `location`, `location_address`, `gallery_images` (JSON list), `amenities` (JSON list), `rules` (JSON), `avg_rating`, `ai_media_caption`, `community_summary`, `author_id`, `author_username`.
-* **`VisitorPhoto`**: `id`, `campground_id`, `user_id`, `user_username`, `user_avatar`, `media_type`, `image_url`, `caption`, `ai_tags` (JSON), `likes_count`, `created_at`, `expires_at` (null for permanent, Unix timestamp for 24h stories).
-* **`Vote`**: `user_id`, `campground_id`, `vote_type` (`1` = like, `-1` = dislike). Primary key: `(user_id, campground_id)`.
-* **`Comment`**: `id`, `text`, `parent_comment_id` (nested replies), `rating` (1-5), `author_id`, `author_username`, `author_avatar`, `campground_id`, `photo_id`, `created_at`.
-* **`Wishlist`**: `id`, `user_id`, `campground_id`, `created_at`.
-* **`CheckIn`**: `id`, `user_id`, `campground_id`, `created_at`.
-* **`Trip` & `TripMember`**: Multi-camper collaborative trip planner.
+* **`Campground`**: `id`, `title`, `price` (float), `image`, `description`, `location`, `location_address`, `gallery_images` (JSON list), `amenities` (JSON list), `rules` (JSON), `avg_rating` (auto-calculated via SQLite triggers), `ai_media_caption`, `community_summary`, `author_id` (FK -> user.id ON DELETE CASCADE).
+* **`VisitorPhoto`**: `id`, `campground_id` (FK -> campground.id ON DELETE CASCADE), `user_id` (FK -> user.id ON DELETE CASCADE), `media_type`, `image_url`, `caption`, `ai_tags` (JSON), `created_at`, `expires_at` (null for permanent, Unix timestamp for 24h stories).
+* **`Vote`**: `user_id` (FK -> user.id ON DELETE CASCADE), `campground_id` (FK -> campground.id ON DELETE CASCADE), `vote_type` (`1` = like, `-1` = dislike). Composite PK: `(user_id, campground_id)`.
+* **`Comment`**: `id`, `text`, `parent_comment_id` (FK -> comment.id ON DELETE CASCADE), `rating` (1-5 with CheckConstraint), `author_id` (FK -> user.id ON DELETE CASCADE), `campground_id` (FK -> campground.id ON DELETE CASCADE), `photo_id` (FK -> visitor_photos.id ON DELETE CASCADE), `created_at`.
+* **`Wishlist`**: `user_id` (FK -> user.id ON DELETE CASCADE), `campground_id` (FK -> campground.id ON DELETE CASCADE). Composite PK: `(user_id, campground_id)`.
+* **`CheckIn`**: `id`, `user_id`, `campground_id`, `timestamp`.
+* **`Trip` & `TripMember`**: Multi-camper collaborative backcountry trip planner.
 * **`CampgroundEmbedding`**: High-dimensional vector embeddings (`768-dim`) stored for semantic RAG search.
 * **`UINavigation`**: Registry of DOM element actions, feature names, and routes used by the AI Agent.
 

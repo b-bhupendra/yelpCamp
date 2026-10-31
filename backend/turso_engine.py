@@ -142,12 +142,34 @@ class TursoCursor:
         return self
 
     def executemany(self, sql: str, seq_of_params: Sequence[Any]):
-        count = 0
-        for p in seq_of_params:
-            self.execute(sql, p)
-            if self.rowcount > 0:
-                count += self.rowcount
-        self.rowcount = count
+        if not seq_of_params:
+            self.rowcount = 0
+            return self
+
+        requests_list = []
+        for params in seq_of_params:
+            clean_args = []
+            if params is not None:
+                if isinstance(params, (tuple, list)):
+                    clean_args = [to_turso_arg(p) for p in params]
+                elif isinstance(params, dict):
+                    stmt_named: Dict[str, Any] = {
+                        "sql": sql,
+                        "named_args": [{"name": k, "value": to_turso_arg(v)} for k, v in params.items()]
+                    }
+                    requests_list.append({"type": "execute", "stmt": stmt_named})
+                    continue
+                else:
+                    clean_args = [to_turso_arg(params)]
+
+            stmt = {"sql": sql}
+            if clean_args:
+                stmt["args"] = clean_args
+            requests_list.append({"type": "execute", "stmt": stmt})
+
+        payload = {"requests": requests_list}
+        self._send_payload(payload)
+        self.rowcount = len(seq_of_params)
         return self
 
     def fetchone(self):
@@ -187,10 +209,20 @@ class TursoConnection:
         return TursoCursor(self.session, self.url, self.token)
 
     def commit(self):
-        pass
+        if self.in_transaction:
+            try:
+                execute_turso_raw("COMMIT")
+            except Exception:
+                pass
+            self.in_transaction = False
 
     def rollback(self):
-        pass
+        if self.in_transaction:
+            try:
+                execute_turso_raw("ROLLBACK")
+            except Exception:
+                pass
+            self.in_transaction = False
 
     def close(self):
         self.session.close()

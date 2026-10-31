@@ -317,32 +317,8 @@ class MultimodalEmbedder:
         amenities: str,
         ai_media_caption: str
     ):
-        """Synchronize an updated campground row into campground_fts."""
-        from turso_engine import execute_turso_raw
-
-        # Local SQLite
-        try:
-            from database import engine
-            with engine.connect() as con:
-                con.exec_driver_sql("DELETE FROM campground_fts WHERE rowid = ?", (campground_id,))
-                con.exec_driver_sql("""
-                    INSERT INTO campground_fts (rowid, title, description, location, location_address, amenities, ai_media_caption)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (campground_id, title, description, location, location_address, amenities, ai_media_caption))
-                con.commit()
-        except Exception as e:
-            logger.debug(f"Local FTS sync notice for camp {campground_id}: {e}")
-
-        # Turso Cloud
-        if settings.USE_TURSO and settings.TURSO_AUTH_TOKEN:
-            try:
-                execute_turso_raw("DELETE FROM campground_fts WHERE rowid = ?", [campground_id])
-                execute_turso_raw("""
-                    INSERT INTO campground_fts (rowid, title, description, location, location_address, amenities, ai_media_caption)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, [campground_id, title, description, location, location_address, amenities, ai_media_caption])
-            except Exception as e:
-                logger.debug(f"Turso FTS sync notice for camp {campground_id}: {e}")
+        """FTS5 synchronization is handled automatically by native database triggers (trg_campground_fts_ai/au/ad)."""
+        pass
 
 multimodal_embedder = MultimodalEmbedder()
 process_campground_ingestion = multimodal_embedder.process_campground_ingestion

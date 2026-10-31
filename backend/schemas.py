@@ -72,6 +72,12 @@ class CommentOut(CommentBase):
     created_at: Optional[str] = None
     replies: List["CommentOut"] = []
 
+    @model_validator(mode="after")
+    def populate_avatar(self) -> "CommentOut":
+        if self.author_username:
+            self.author_avatar = get_user_avatar_url(self.author_username, self.author_avatar)
+        return self
+
 # ==============================================================================
 # 3. VISITOR PHOTOS & STORIES SCHEMAS
 # ==============================================================================
@@ -86,7 +92,7 @@ class VisitorPhotoOut(SQLModel):
     campground_id: Optional[int] = None
     campground_title: Optional[str] = ""
     user_id: int
-    user_username: str
+    user_username: str = ""
     username: Optional[str] = None  # Frontend compatibility alias
     user_avatar: Optional[str] = None
     avatar_url: Optional[str] = None  # Frontend compatibility alias
@@ -114,10 +120,12 @@ class VisitorPhotoOut(SQLModel):
 
     @model_validator(mode="after")
     def sanitize_and_aliases(self) -> "VisitorPhotoOut":
-        if not self.username:
-            self.username = self.user_username
-        self.avatar_url = get_user_avatar_url(self.user_username, self.user_avatar or self.avatar_url)
-        self.user_avatar = self.avatar_url
+        uname = self.user_username or self.username or ""
+        self.user_username = uname
+        self.username = uname
+        avatar = get_user_avatar_url(uname, self.user_avatar or self.avatar_url)
+        self.avatar_url = avatar
+        self.user_avatar = avatar
         self.image_url = sanitize_campground_image(self.image_url, self.id)
         return self
 
@@ -171,6 +179,11 @@ class CampgroundCard(CampgroundBase):
     likes_count: int = 0
     dislikes_count: int = 0
 
+    @computed_field
+    @property
+    def name(self) -> str:
+        return self.title
+
 class CampgroundOut(CampgroundBase):
     id: int
     gallery_images: List[str] = []
@@ -187,15 +200,17 @@ class CampgroundOut(CampgroundBase):
     comments: List[CommentOut] = []
     comments_tree: List[CommentOut] = []
 
+    @computed_field
+    @property
+    def name(self) -> str:
+        return self.title
+
     @model_validator(mode="after")
     def sanitize_media_and_avatar(self) -> "CampgroundOut":
-        if self.title and not self.name:
-            self.name = self.title
-        elif self.name and not self.title:
-            self.title = self.name
         self.image = sanitize_campground_image(self.image, self.id)
         self.gallery_images = sanitize_gallery_images(self.gallery_images, self.id)
-        self.author_avatar = get_user_avatar_url(self.author_username, self.author_avatar)
+        if self.author_username:
+            self.author_avatar = get_user_avatar_url(self.author_username, self.author_avatar)
         return self
 
 class PaginatedCampgrounds(PaginatedResponse[CampgroundCard]):
