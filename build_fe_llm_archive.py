@@ -131,8 +131,6 @@ def main():
     print(f">> Total eligible frontend files found: {len(files)}")
 
     CONTEXT_DIR.mkdir(parents=True, exist_ok=True)
-    output_txt = ROOT_DIR / "frontend_llm_codebase.txt"
-    output_zip = ROOT_DIR / "frontend_clean_codebase.zip"
     context_txt = CONTEXT_DIR / "frontend_llm_codebase.txt"
     context_zip = CONTEXT_DIR / "frontend_clean_codebase.zip"
 
@@ -144,7 +142,7 @@ def main():
     total_chars = 0
 
     # 1. Build single-file digest for LLMs
-    with open(output_txt, "w", encoding="utf-8") as out:
+    with open(context_txt, "w", encoding="utf-8") as out:
         out.write("# YELPCAMP FRONTEND (frontend-ver2) CODEBASE ARCHIVE FOR LLM INGESTION\n")
         out.write(f"# Generated: {utc_now} ({local_now})\n")
         out.write(f"# Git: {git_info}\n")
@@ -185,22 +183,18 @@ def main():
             except Exception as e:
                 out.write(f"[Error reading file: {e}]\n\n")
 
-    shutil.copy2(output_txt, context_txt)
-
-    print(f">> Generated Frontend LLM Digest: {output_txt.name} & {context_txt.relative_to(ROOT_DIR)}")
+    print(f">> Generated Frontend LLM Digest: {context_txt.relative_to(ROOT_DIR)}")
     print(f">> Total lines of code: {total_lines:,}")
     print(f">> Total characters: {total_chars:,} (~{total_chars // 4:,} estimated tokens)")
-    print(f">> Digest file size: {output_txt.stat().st_size / (1024 * 1024):.2f} MB")
+    print(f">> Digest file size: {context_txt.stat().st_size / (1024 * 1024):.2f} MB")
 
     # 2. Build clean frontend zip archive
-    with zipfile.ZipFile(output_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+    with zipfile.ZipFile(context_zip, "w", zipfile.ZIP_DEFLATED) as zf:
         for p in files:
             rel = str(p.relative_to(ROOT_DIR)).replace("\\", "/")
             zf.write(p, arcname=rel)
 
-    shutil.copy2(output_zip, context_zip)
-
-    print(f">> Created clean frontend source zip: {output_zip.name} & {context_zip.relative_to(ROOT_DIR)} ({output_zip.stat().st_size / 1024:.1f} KB)")
+    print(f">> Created clean frontend source zip: {context_zip.relative_to(ROOT_DIR)} ({context_zip.stat().st_size / 1024:.1f} KB)")
     print(">> Frontend LLM archive creation completed successfully.")
 
 if __name__ == "__main__":
