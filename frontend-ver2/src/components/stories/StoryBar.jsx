@@ -105,6 +105,54 @@ export default function StoryBar({
     setViewerState({ isOpen: true, initialGroupIndex: groupIndex });
   };
 
+  // Register Agent Actions for Story Viewer
+  useAgentAction({
+    id: 'check_story',
+    feature_name: 'View Camper Story',
+    description: 'Opens the full-screen Story Viewer for a specific username or story index',
+    parameters: {
+      type: 'object',
+      properties: {
+        username: { type: 'string', description: 'Optional username whose story to open' },
+        index: { type: 'number', description: '0-based story bubble index (default 0)' },
+      },
+    },
+    handler: ({ username, index = 0 } = {}) => {
+      if (!storyGroups.length) return { status: 'empty' };
+      let targetIdx = index;
+      if (username) {
+        const cleanName = username.toLowerCase().replace(/^@/, '');
+        const found = storyGroups.findIndex(
+          (g) => (g.username?.toLowerCase() === cleanName) || (g.user_username?.toLowerCase() === cleanName)
+        );
+        if (found !== -1) targetIdx = found;
+      }
+      handleOpenViewer(Math.min(targetIdx, storyGroups.length - 1));
+      return { status: 'watching_story', index: targetIdx };
+    },
+    deps: [storyGroups],
+  });
+
+  useAgentAction({
+    id: 'view_story',
+    feature_name: 'View Camper Story',
+    description: 'Opens the full-screen Story Viewer for a specific username or story index',
+    handler: ({ username, index = 0 } = {}) => {
+      if (!storyGroups.length) return { status: 'empty' };
+      let targetIdx = index;
+      if (username) {
+        const cleanName = username.toLowerCase().replace(/^@/, '');
+        const found = storyGroups.findIndex(
+          (g) => (g.username?.toLowerCase() === cleanName) || (g.user_username?.toLowerCase() === cleanName)
+        );
+        if (found !== -1) targetIdx = found;
+      }
+      handleOpenViewer(Math.min(targetIdx, storyGroups.length - 1));
+      return { status: 'watching_story', index: targetIdx };
+    },
+    deps: [storyGroups],
+  });
+
   const handleStoryDeleted = (photoId) => {
     fetchStories();
     if (onStoryUpdated) onStoryUpdated();

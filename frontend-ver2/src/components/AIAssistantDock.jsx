@@ -132,7 +132,7 @@ function FormattedMessage({ content, onNavigateCampground }) {
 export default function AIAssistantDock() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { uiContext, registeredActions, highlightElement, pendingApproval } = useAgent();
+  const { uiContext, registeredActions, highlightElement, pendingApproval, activeStepBanner } = useAgent();
   const { messages, isLoading, sendMessage } = useAgentChat();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -513,6 +513,14 @@ export default function AIAssistantDock() {
                       <div className="h-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-300 animate-indeterminate-bar w-1/3 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Dynamic Multi-Step Action Guidance Banner */}
+              {activeStepBanner && (
+                <div className="px-3.5 py-2 mx-3 mb-2 rounded-xl bg-sky-500/10 border border-sky-500/25 flex items-center gap-2.5 text-xs text-sky-400 animate-fadeIn shadow-sm">
+                  <div className="w-2 h-2 rounded-full bg-sky-400 animate-ping shrink-0" />
+                  <span className="font-medium truncate">{activeStepBanner}</span>
                 </div>
               )}
 

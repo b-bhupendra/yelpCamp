@@ -15,10 +15,18 @@ class AgentUIHighlight(BaseModel):
     feature_name: Optional[str] = None
     description: Optional[str] = None
 
+class ActionPlanStep(BaseModel):
+    id: str = Field(description="Action ID from available actions")
+    args: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Arguments for this step")
+    guidance: Optional[str] = Field(default="", description="User-facing status text describing what is happening in this step")
+    dom_selector: Optional[str] = Field(default=None, description="Optional CSS selector to spotlight during this step")
+    route: Optional[str] = Field(default=None, description="Target route if step requires navigation")
+
 class AgentLLMOutput(BaseModel):
     reply: str = Field(description="Warm, helpful response citing campsites as [Campground: <Name>](campground:<id>)")
     trigger_action_id: Optional[str] = Field(default=None, description="Action ID to execute from available actions, or null")
     action_args: Optional[Dict[str, Any]] = Field(default=None, description="Arguments for the triggered action, or null")
+    action_plan: Optional[List[ActionPlanStep]] = Field(default=None, description="Ordered sequence of multi-step actions to execute in chain, or null")
     ui_highlight: Optional[AgentUIHighlight] = Field(default=None, description="Element spotlight information, or null")
 
 class RAGService:
@@ -91,17 +99,21 @@ class RAGService:
             "1. Respond ONLY with a valid JSON object matching this schema:\n"
             "{\n"
             '  "reply": "Warm, concise conversational response. When citing a campsite, use [Campground: <Name>](campground:<id>). Do not use bullet emojis.",\n'
-            '  "trigger_action_id": "Exact id from Available Actions if the user asks to trigger it (e.g. user_logout, user_login, add_campsite, open_share_modal), or null",\n'
+            '  "trigger_action_id": "Exact id from Available Actions for a single action, or null",\n'
             '  "action_args": "Object with arguments for the triggered action, or null",\n'
+            '  "action_plan": "Ordered list of [{id, args, guidance, dom_selector, route}] for multi-step task chains (e.g. upvote + draft clone + open story), or null",\n'
             '  "ui_highlight": "Object {route, dom_selector, feature_name, description} if user asks where a button is or UI navigation matches, or null"\n'
             "}\n"
-            "2. If the user asks to log out, sign out, or exit their account:\n"
+            "2. When a user requests multiple sequential tasks (e.g. 'Like that post, create a similar post, then check that story'):\n"
+            "   - Return an ordered 'action_plan' array containing each step with helpful user-facing 'guidance' text.\n"
+            "   - When 'action_plan' is populated, 'trigger_action_id' can be set to the first action or null.\n"
+            "3. If the user asks to log out, sign out, or exit their account:\n"
             "   - If 'user_logout' is in Available Actions, set trigger_action_id to 'user_logout', and inform them a confirmation prompt has been opened.\n"
             "   - If the user is already signed out, inform them gently.\n"
-            "3. If the user asks to log in, sign in, or create an account:\n"
+            "4. If the user asks to log in, sign in, or create an account:\n"
             "   - Set trigger_action_id to 'user_login' or 'navigate_login' (or 'user_register') and highlight the button.\n"
-            "4. Never make up DOM selectors or action IDs that are not provided in the prompt.\n"
-            "5. If no frontend action is requested, set trigger_action_id to null."
+            "5. Never make up DOM selectors or action IDs that are not provided in the prompt.\n"
+            "6. If no frontend action is requested, set trigger_action_id to null and action_plan to null."
         )
 
         client = multimodal_embedder.client
@@ -198,6 +210,7 @@ class RAGService:
                 "reply": fallback_text,
                 "trigger_action_id": matched_action_id,
                 "action_args": action_args,
+                "action_plan": None,
                 "ui_highlight": ui_nav_target
             }
 
@@ -207,6 +220,7 @@ class RAGService:
             "story_results": [],
             "trigger_action_id": reply_json.get("trigger_action_id"),
             "action_args": reply_json.get("action_args"),
+            "action_plan": reply_json.get("action_plan"),
             "ui_highlight": reply_json.get("ui_highlight") or ui_nav_target
         }
 

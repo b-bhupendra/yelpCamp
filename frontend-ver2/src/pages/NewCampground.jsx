@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
@@ -49,6 +49,27 @@ export default function NewCampground() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+
+  // Hydrate AI draft from sessionStorage if navigated from a cloned/similar campsite
+  useEffect(() => {
+    const savedDraft = sessionStorage.getItem('yelpcamp_ai_draft');
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed.title) setTitle(parsed.title);
+        if (parsed.price !== undefined) setPrice(String(parsed.price));
+        if (parsed.location_address || parsed.location) setLocationAddress(parsed.location_address || parsed.location);
+        if (parsed.description) setDescription(parsed.description);
+        if (parsed.image) setCoverImage(parsed.image);
+        if (parsed.amenities && Array.isArray(parsed.amenities)) setSelectedAmenities(parsed.amenities);
+        sessionStorage.removeItem('yelpcamp_ai_draft');
+        toast.info('Aurora Co-Pilot pre-filled your draft! Review and click Publish when ready.');
+      } catch (err) {
+        console.error('Failed to parse draft from sessionStorage:', err);
+      }
+    }
+  }, [toast]);
+
   const toggleAmenity = (id) => {
     setSelectedAmenities((prev) =>
       prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]

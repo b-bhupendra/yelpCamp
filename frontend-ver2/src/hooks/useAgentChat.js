@@ -81,17 +81,21 @@ export function useAgentChat() {
         story_results: data.story_results || [],
         trigger_action_id: data.trigger_action_id,
         action_args: data.action_args,
+        action_plan: data.action_plan,
         ui_highlight: data.ui_highlight,
         timestamp: new Date().toISOString()
       };
 
       setMessages((prev) => [...prev, modelMessage]);
 
-      // 1. Dispatch in-app action if directed
-      if (data.trigger_action_id) {
-        console.info(`[Agent] Executing triggered action: ${data.trigger_action_id}`);
-        const runAction = executeAgentAction || executeAction;
-        if (typeof runAction === 'function') {
+      // 1. Dispatch multi-step action plan or single action if directed
+      const runAction = executeAgentAction || executeAction;
+      if (typeof runAction === 'function') {
+        if (Array.isArray(data.action_plan) && data.action_plan.length > 0) {
+          console.info(`[Agent] Enqueueing multi-step action plan (${data.action_plan.length} steps):`, data.action_plan);
+          runAction(data.action_plan);
+        } else if (data.trigger_action_id) {
+          console.info(`[Agent] Executing triggered action: ${data.trigger_action_id}`);
           runAction(data.trigger_action_id, data.action_args);
         }
       }

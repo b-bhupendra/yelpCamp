@@ -15,21 +15,23 @@ export function AgentProvider({ children }) {
 
   const [registeredActions, setRegisteredActions] = useState({});
   const actionsRef = useRef({});
+  const [activeStepBanner, setActiveStepBanner] = useState(null);
+  const [pendingApproval, setPendingApproval] = useState(null);
+
   const [uiContext, setUiContextState] = useState({
     current_route: location.pathname,
     active_campground_id: null,
     active_campground_title: null,
+    active_campground_data: null,
     open_modal: null,
-    draft_fields: {}
+    draft_fields: {},
   });
 
-  // Queue for actions that require navigating to another route before executing
-  const pendingRouteActionRef = useRef(null);
+  // FIFO Queue for chained multi-step actions across routes
+  const actionQueueRef = useRef([]);
+  const isProcessingQueueRef = useRef(false);
+  const activeDriverRef = useRef(null);
 
-  // Human-in-the-Loop (HITL) state for high-stakes mutating actions
-  const [pendingApproval, setPendingApproval] = useState(null);
-
-  // 1. Keep current_route and auth state updated in uiContext
   useEffect(() => {
     setUiContextState((prev) => ({
       ...prev,
@@ -41,9 +43,7 @@ export function AgentProvider({ children }) {
 
   const updateUiContext = useCallback((keyOrUpdater, maybeValue) => {
     setUiContextState((prev) => {
-      if (typeof keyOrUpdater === 'function') {
-        return keyOrUpdater(prev);
-      }
+      if (typeof keyOrUpdater === 'function') return keyOrUpdater(prev);
       if (typeof keyOrUpdater === 'string') {
         if (maybeValue === undefined) {
           const copy = { ...prev };
@@ -61,13 +61,12 @@ export function AgentProvider({ children }) {
 
   const setUiContext = updateUiContext;
 
-  // 2. Auto-sync UI_CAPABILITY_MANIFEST to Backend Vector Store if manifest changed
+  // Auto-sync UI_CAPABILITY_MANIFEST to Backend Vector Store if manifest changed
   useEffect(() => {
     const syncManifest = async () => {
       try {
         const manifestStr = JSON.stringify(UI_CAPABILITY_MANIFEST);
         const cachedHash = localStorage.getItem('yelpcamp_ui_manifest_hash');
-        // Fast string hash
         let hash = 0;
         for (let i = 0; i < manifestStr.length; i++) {
           hash = (hash << 5) - hash + manifestStr.charCodeAt(i);
@@ -81,39 +80,202 @@ export function AgentProvider({ children }) {
           console.info('[Agent Manifest] Auto-synced UI capabilities to Vector DB.');
         }
       } catch (err) {
-        // Non-blocking notice in dev/offline mode
         console.debug('UI Manifest auto-sync notice:', err?.message);
       }
     };
     syncManifest();
   }, []);
 
-  // 3. Register component-level action (and drain deferred cross-page queue if waiting!)
-  const registerAction = useCallback((actionOrId, maybeMeta) => {
-    let action;
-    if (typeof actionOrId === 'object' && actionOrId !== null) {
-      action = { ...actionOrId };
-    } else {
-      action = { id: actionOrId, ...(maybeMeta || {}) };
+  // Resolve dynamic routes like /campgrounds/:id using args or uiContext
+  const resolveRoute = useCallback((routePattern, args = {}) => {
+    if (!routePattern) return null;
+    if (!routePattern.includes(':id')) return routePattern;
+    const campId = args?.campground_id || args?.id || uiContext.active_campground_id;
+    return campId ? routePattern.replace(':id', String(campId)) : '/campgrounds';
+  }, [uiContext.active_campground_id]);
+
+  // Wait for an action to be mounted in actionsRef (up to 3.5s after route change)
+  const waitForActionMount = (actionId, timeoutMs = 3500) =>
+    new Promise((resolve) => {
+      const start = Date.now();
+      const check = () => {
+        if (actionsRef.current[actionId]) return resolve(actionsRef.current[actionId]);
+        if (Date.now() - start >= timeoutMs) return resolve(null);
+        setTimeout(check, 100);
+      };
+      check();
+    });
+
+  // Wait for a DOM selector to appear before spotlighting
+  const waitForElement = (selector, timeoutMs = 3000) =>
+    new Promise((resolve) => {
+      const start = Date.now();
+      const check = () => {
+        const el = document.querySelector(selector);
+        if (el) return resolve(el);
+        if (Date.now() - start >= timeoutMs) return resolve(null);
+        setTimeout(check, 100);
+      };
+      check();
+    });
+
+  // Spotlight a single element or run a multi-step guided tour
+  const highlightElement = useCallback(async (uiHighlight) => {
+    if (!uiHighlight || !uiHighlight.dom_selector) return;
+
+    const targetRoute = resolveRoute(uiHighlight.route, uiHighlight.args);
+    if (targetRoute && window.location.pathname !== targetRoute) {
+      navigate(targetRoute);
     }
+
+    const el = await waitForElement(uiHighlight.dom_selector);
+    if (!el) return;
+
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (activeDriverRef.current) {
+      try { activeDriverRef.current.destroy(); } catch {}
+    }
+
+    const drv = driver({
+      animate: true,
+      popoverClass: 'aurora-driver-popover',
+      showProgress: true,
+      showButtons: ['next', 'close'],
+      stagePadding: 8,
+      stageRadius: 12,
+      onDestroyStarted: () => {
+        drv.destroy();
+        activeDriverRef.current = null;
+      },
+    });
+    activeDriverRef.current = drv;
+    drv.highlight({
+      element: uiHighlight.dom_selector,
+      popover: {
+        title: uiHighlight.feature_name || 'Aurora Guide',
+        description: uiHighlight.description || 'Interact with this control here.',
+        side: 'bottom',
+        align: 'center',
+      },
+    });
+  }, [navigate, resolveRoute]);
+
+  // Sequential Chained Action Queue Processor
+  const processActionQueue = useCallback(async () => {
+    if (isProcessingQueueRef.current) return;
+    isProcessingQueueRef.current = true;
+
+    while (actionQueueRef.current.length > 0) {
+      const step = actionQueueRef.current[0];
+      const { id: actionId, args = {}, guidance } = step;
+
+      if (guidance) {
+        setActiveStepBanner(guidance);
+      }
+
+      const manifestEntry = UI_CAPABILITY_MANIFEST.find((m) => m.id === actionId);
+      let actionObj = actionsRef.current[actionId];
+
+      // 1. If action isn't mounted on current page, navigate to its target route first
+      if (!actionObj) {
+        const targetRoute = resolveRoute(step.route || manifestEntry?.route, args);
+        if (targetRoute && window.location.pathname !== targetRoute) {
+          navigate(targetRoute);
+          actionObj = await waitForActionMount(actionId, 3500);
+        }
+      }
+
+      if (!actionObj) {
+        console.warn(`[Agent Queue] Action ${actionId} could not be mounted.`);
+        actionQueueRef.current.shift();
+        continue;
+      }
+
+      // 2. Check HITL Gate for MUTATE actions
+      const riskLevel = actionObj.risk_level || manifestEntry?.risk_level || 'SAFE';
+      const isMutatingOrRequiresConfirmation = Boolean(
+        actionObj.requiresConfirmation ||
+        actionObj.requires_confirmation ||
+        riskLevel === 'MUTATE' ||
+        manifestEntry?.requiresConfirmation ||
+        manifestEntry?.requires_confirmation ||
+        manifestEntry?.risk_level === 'MUTATE'
+      );
+
+      if (isMutatingOrRequiresConfirmation) {
+        await new Promise((resolve) => {
+          setPendingApproval({
+            id: actionId,
+            title: actionObj.feature_name || manifestEntry?.feature_name || actionId.replace(/_/g, ' '),
+            description: guidance || actionObj.description || 'Confirm this action to proceed.',
+            args,
+            onConfirm: async () => {
+              try {
+                await actionObj.handler(args);
+              } catch (err) {
+                console.error(`[Agent Queue] Step ${actionId} failed on confirm:`, err);
+              } finally {
+                setPendingApproval(null);
+                resolve();
+              }
+            },
+            onCancel: () => {
+              setPendingApproval(null);
+              actionQueueRef.current = []; // Abort remaining chain if user rejects
+              resolve();
+            },
+          });
+        });
+      } else {
+        // 3. Execute SAFE / DRAFT action and await completion before running next chained step
+        try {
+          await actionObj.handler(args);
+        } catch (err) {
+          console.error(`[Agent Queue] Step ${actionId} failed:`, err);
+        }
+      }
+
+      // Optional spotlight for this step
+      if (step.dom_selector) {
+        await highlightElement({
+          dom_selector: step.dom_selector,
+          feature_name: step.feature_name || actionObj.feature_name,
+          description: guidance || actionObj.description,
+        });
+      }
+
+      actionQueueRef.current.shift();
+      // Brief pause between chained actions so user can visually follow the UI transition
+      if (actionQueueRef.current.length > 0) {
+        await new Promise((r) => setTimeout(r, 650));
+      }
+    }
+
+    setTimeout(() => setActiveStepBanner(null), 4000);
+    isProcessingQueueRef.current = false;
+  }, [navigate, resolveRoute, highlightElement]);
+
+  // Enqueue single action or an array of chained actions
+  const executeAgentAction = useCallback((actionOrPlan, maybeArgs = {}) => {
+    if (!actionOrPlan) return;
+
+    const steps = Array.isArray(actionOrPlan)
+      ? actionOrPlan
+      : [{ id: actionOrPlan, args: maybeArgs }];
+
+    actionQueueRef.current.push(...steps);
+    processActionQueue();
+  }, [processActionQueue]);
+
+  const registerAction = useCallback((actionOrId, maybeMeta) => {
+    const action = typeof actionOrId === 'object' && actionOrId !== null
+      ? { ...actionOrId }
+      : { id: actionOrId, ...(maybeMeta || {}) };
 
     if (!action?.id || typeof action.handler !== 'function') return () => {};
 
     actionsRef.current[action.id] = action;
     setRegisteredActions((prev) => ({ ...prev, [action.id]: action }));
-
-    // Check if the AI navigated to this page specifically to run this action
-    if (pendingRouteActionRef.current && pendingRouteActionRef.current.id === action.id) {
-      const { args } = pendingRouteActionRef.current;
-      pendingRouteActionRef.current = null;
-      setTimeout(() => {
-        try {
-          action.handler(args || {});
-        } catch (err) {
-          console.error(`[Agent Action] Error executing deferred action ${action.id}:`, err);
-        }
-      }, 200);
-    }
 
     return () => {
       delete actionsRef.current[action.id];
@@ -126,14 +288,13 @@ export function AgentProvider({ children }) {
   }, []);
 
   const unregisterAction = useCallback((id) => {
-    if (id) {
-      delete actionsRef.current[id];
-      setRegisteredActions((prev) => {
-        const copy = { ...prev };
-        delete copy[id];
-        return copy;
-      });
-    }
+    if (!id) return;
+    delete actionsRef.current[id];
+    setRegisteredActions((prev) => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
   }, []);
 
   // Register standard global navigation actions
@@ -220,119 +381,6 @@ export function AgentProvider({ children }) {
     }
   }, [user, logout, navigate, registerAction]);
 
-  // 4. Driver.js Spotlight with Automatic Cross-Route Navigation
-  const activeDriverRef = useRef(null);
-
-  const highlightElement = useCallback((uiHighlight) => {
-    if (!uiHighlight || !uiHighlight.dom_selector) return;
-
-    const targetRoute = uiHighlight.route;
-    const isDynamicPattern = targetRoute && targetRoute.includes(':');
-
-    if (targetRoute && !isDynamicPattern && location.pathname !== targetRoute) {
-      navigate(targetRoute);
-    }
-
-    // Poll for DOM element to exist after route transition
-    let attempts = 0;
-    const trySpotlight = () => {
-      const el = document.querySelector(uiHighlight.dom_selector);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        if (activeDriverRef.current) {
-          try {
-            activeDriverRef.current.destroy();
-          } catch {}
-        }
-        const drv = driver({
-          animate: true,
-          showProgress: false,
-          showButtons: ['close'],
-          stagePadding: 8,
-          stageRadius: 12,
-          onDestroyStarted: () => {
-            drv.destroy();
-            activeDriverRef.current = null;
-          }
-        });
-        activeDriverRef.current = drv;
-        drv.highlight({
-          element: uiHighlight.dom_selector,
-          popover: {
-            title: uiHighlight.feature_name || 'Feature Spotlight',
-            description: uiHighlight.description || 'Interact with this control here.',
-            side: 'bottom',
-            align: 'center',
-          },
-        });
-      } else if (attempts < 12) {
-        attempts += 1;
-        setTimeout(trySpotlight, 150);
-      }
-    };
-
-    setTimeout(trySpotlight, 200);
-  }, [location.pathname, navigate]);
-
-  // 5. Execute or Queue Action (Supports Mounted, Unmounted Cross-Page, and HITL Gate)
-  const executeAgentAction = useCallback((actionId, actionArgs = {}) => {
-    if (!actionId) return;
-
-    const mountedAction = actionsRef.current[actionId] || registeredActions[actionId];
-    const manifestEntry = UI_CAPABILITY_MANIFEST.find((m) => m.id === actionId);
-    const riskLevel = mountedAction?.risk_level || manifestEntry?.risk_level || 'SAFE';
-    const isMutatingOrRequiresConfirmation = Boolean(
-      mountedAction?.requiresConfirmation ||
-      mountedAction?.requires_confirmation ||
-      riskLevel === 'MUTATE' ||
-      manifestEntry?.requiresConfirmation ||
-      manifestEntry?.requires_confirmation ||
-      manifestEntry?.risk_level === 'MUTATE'
-    );
-
-    const runNowOrNavigate = () => {
-      if (mountedAction && typeof mountedAction.handler === 'function') {
-        try {
-          return mountedAction.handler(actionArgs || {});
-        } catch (err) {
-          console.error(`[Agent Action] Error executing ${actionId}:`, err);
-        }
-        return;
-      }
-      // If component is not mounted yet, check if manifest knows its route!
-      if (manifestEntry && manifestEntry.route && !manifestEntry.route.includes(':')) {
-        pendingRouteActionRef.current = { id: actionId, args: actionArgs };
-        navigate(manifestEntry.route);
-      } else {
-        console.warn(`[Agent Action] Action not registered and route unknown: ${actionId}`);
-      }
-    };
-
-    // Gate Tier-2 ("MUTATE" or requiresConfirmation) actions behind Human-in-the-Loop confirmation
-    if (isMutatingOrRequiresConfirmation) {
-      setPendingApproval({
-        id: actionId,
-        title: mountedAction?.feature_name || manifestEntry?.feature_name || actionId.replace(/_/g, ' '),
-        description: mountedAction?.description || manifestEntry?.description || 'This action will modify, delete, or publish data.',
-        args: actionArgs,
-        onConfirm: async () => {
-          try {
-            await runNowOrNavigate();
-          } finally {
-            setPendingApproval(null);
-          }
-        },
-        onCancel: () => setPendingApproval(null),
-      });
-    } else {
-      runNowOrNavigate();
-    }
-  }, [registeredActions, navigate]);
-
-  // Alias for backwards compatibility
-  const executeAction = executeAgentAction;
-
-  // 6. Snapshot combines Mounted Component Actions + Global Unmounted Route Capabilities
   const getCurrentSnapshot = useCallback(() => {
     const mountedList = Object.values(actionsRef.current).map((a) => ({
       id: a.id,
@@ -366,11 +414,12 @@ export function AgentProvider({ children }) {
         updateUiContext,
         registeredActions,
         pendingApproval,
+        activeStepBanner,
         registerAction,
         unregisterAction,
         highlightElement,
         executeAgentAction,
-        executeAction,
+        executeAction: executeAgentAction,
         getCurrentSnapshot,
       }}
     >

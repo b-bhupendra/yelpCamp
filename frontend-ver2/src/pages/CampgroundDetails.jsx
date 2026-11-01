@@ -13,6 +13,7 @@ import StoryBar from '../components/stories/StoryBar';
 import ThreadedComments from '../components/comments/ThreadedComments';
 import SharePropertyModal from '../components/SharePropertyModal';
 import { useAgentAction } from '../hooks/useAgentAction';
+import { useAgent } from '../context/AgentContext';
 import { handleImageError } from '../utils/imageFallback';
 
 const AMENITY_METADATA = {
@@ -34,6 +35,7 @@ export default function CampgroundDetails() {
   const [loading, setLoading] = useState(true);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(null);
+  const { updateUiContext } = useAgent();
 
   // Optimistic voting hook
   const {
@@ -111,7 +113,83 @@ export default function CampgroundDetails() {
     fetchCampground();
   }, [fetchCampground]);
 
+  // Synchronize active campsite details to AI Agent context
+  useEffect(() => {
+    if (campground) {
+      updateUiContext({
+        active_campground_id: campground.id,
+        active_campground_title: campground.title || campground.name,
+        active_campground_data: {
+          title: campground.title || campground.name,
+          price: campground.price,
+          location: campground.location || campground.location_address,
+          description: campground.description,
+          amenities: campground.amenities || [],
+          image: campground.image,
+        },
+      });
+    }
+    return () => {
+      updateUiContext({
+        active_campground_id: null,
+        active_campground_title: null,
+        active_campground_data: null,
+      });
+    };
+  }, [campground, updateUiContext]);
+
   // Register Agent Actions for AI Co-Pilot
+  useAgentAction({
+    id: 'like_campground',
+    feature_name: 'Upvote / Like Campsite',
+    description: 'Likes or upvotes (+1) the currently viewed campground',
+    parameters: { type: 'object', properties: {} },
+    handler: async () => {
+      await castVote(1);
+      return { status: 'liked', campground_id: id };
+    },
+  });
+
+  useAgentAction({
+    id: 'wishlist_campground',
+    feature_name: 'Save to Wishlist',
+    description: 'Toggles saving the current campground to the user wishlist',
+    parameters: { type: 'object', properties: {} },
+    handler: async () => {
+      await toggleWishlist();
+      return { status: 'wishlisted', campground_id: id };
+    },
+  });
+
+  useAgentAction({
+    id: 'create_similar_campground',
+    feature_name: 'Create Similar Campground',
+    description: 'Navigates to the New Campground form and pre-fills it with a draft similar to this campsite',
+    risk_level: 'DRAFT',
+    parameters: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Title for the new similar campground' },
+        price: { type: 'number', description: 'Nightly rate' },
+        location: { type: 'string', description: 'Location address' },
+        description: { type: 'string', description: 'Description' },
+      },
+    },
+    handler: async (args = {}) => {
+      const draft = {
+        title: args.title || `${campground?.title || campground?.name || 'Camp'} II`,
+        price: args.price !== undefined ? args.price : campground?.price,
+        location_address: args.location || campground?.location_address || campground?.location || '',
+        description: args.description || (campground ? `Inspired by ${campground.title || campground.name}: ${campground.description}` : ''),
+        image: campground?.image || '',
+        amenities: campground?.amenities || [],
+      };
+      sessionStorage.setItem('yelpcamp_ai_draft', JSON.stringify(draft));
+      navigate('/campgrounds/new');
+      return { status: 'navigated_to_draft', draft };
+    },
+  });
+
   useAgentAction({
     id: 'open_share_modal',
     description: 'Opens the share suite and offline QR code for this campsite',

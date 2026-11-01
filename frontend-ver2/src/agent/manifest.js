@@ -81,5 +81,37 @@ export const UI_CAPABILITY_MANIFEST = [
     dom_selector: "#nav-register",
     risk_level: "SAFE",
     description: "Create a new wilderness explorer account on YelpCamp.",
+  },
+  {
+    id: "like_campground",
+    feature_name: "Upvote / Like Campsite",
+    route: "/campgrounds/:id",
+    dom_selector: "#btn-upvote",
+    risk_level: "SAFE",
+    description: "Likes or upvotes (+1) the currently viewed campsite.",
+  },
+  {
+    id: "wishlist_campground",
+    feature_name: "Save to Wishlist",
+    route: "/campgrounds/:id",
+    dom_selector: "#btn-wishlist",
+    risk_level: "SAFE",
+    description: "Toggles saving the currently viewed campsite into the user wishlist.",
+  },
+  {
+    id: "create_similar_campground",
+    feature_name: "Create Similar Campground",
+    route: "/campgrounds/:id",
+    dom_selector: "#btn-new-campground",
+    risk_level: "DRAFT",
+    description: "Navigates to the Host New Campsite form pre-filled with a draft clone inspired by the current campsite.",
+  },
+  {
+    id: "check_story",
+    feature_name: "View Camper Story",
+    route: "/campgrounds",
+    dom_selector: "#story-bar",
+    risk_level: "SAFE",
+    description: "Opens the full-screen camper story viewer for a specific username or story tray bubble.",
   }
 ];

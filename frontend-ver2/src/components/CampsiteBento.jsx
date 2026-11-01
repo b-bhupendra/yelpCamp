@@ -176,22 +176,20 @@ export default function CampsiteBento() {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
+        setVisible((prev) => {
+          const next = [...prev];
+          let changed = false;
+          entries.forEach((entry) => {
             const index = Number(entry.target.getAttribute('data-bento-idx'));
-            if (!isNaN(index)) {
-              setVisible((prev) => {
-                if (prev[index]) return prev;
-                const next = [...prev];
-                next[index] = true;
-                return next;
-              });
+            if (!isNaN(index) && next[index] !== entry.isIntersecting) {
+              next[index] = entry.isIntersecting;
+              changed = true;
             }
-            observer.unobserve(entry.target);
-          }
+          });
+          return changed ? next : prev;
         });
       },
-      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+      { threshold: 0.12, rootMargin: '-30px 0px -30px 0px' }
     );
 
     refs.current.forEach((el) => {

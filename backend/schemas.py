@@ -293,4 +293,5 @@ class AgentInteractResponse(SQLModel):
     story_results: List[Dict[str, Any]] = Field(default_factory=list)
     trigger_action_id: Optional[str] = None
     action_args: Optional[Dict[str, Any]] = None
+    action_plan: Optional[List[Dict[str, Any]]] = None
     ui_highlight: Optional[Dict[str, Any]] = None
