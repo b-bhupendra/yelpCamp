@@ -7,8 +7,8 @@ from alembic import context
 # Ensure backend root is on sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import models
-from config import settings
+import app.models
+from app.core.config import settings
 
 # Alembic Config object
 config = context.config
@@ -56,7 +56,7 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode directly against database engine."""
-    from database import engine
+    from app.core.database import engine
 
     with engine.connect() as connection:
         context.configure(

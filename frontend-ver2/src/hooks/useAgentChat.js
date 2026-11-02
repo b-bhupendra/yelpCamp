@@ -5,7 +5,7 @@ import { useAgent } from '../context/AgentContext';
 const INITIAL_GREETING = {
   id: 'init-msg',
   role: 'model',
-  content: "Greetings adventurer! I am Aurora, your YelpCamp Co-Pilot. Ask me to find secluded campsites, compare amenities, or guide you directly to any feature on this screen.",
+  content: "Greetings adventurer! I am Aurora, your Meadows Co-Pilot. Ask me to find secluded campsites, compare amenities, or guide you directly to any feature on this screen.",
   campsite_results: [],
   story_results: [],
   trigger_action_id: null,

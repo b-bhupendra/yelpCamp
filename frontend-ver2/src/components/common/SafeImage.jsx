@@ -10,7 +10,7 @@ import { getFallbackImage } from '../../utils/imageFallback';
  */
 export default function SafeImage({
   src,
-  alt = 'YelpCamp Photo',
+  alt = 'Meadows Photo',
   className = '',
   seed = 0,
   type = 'campground',

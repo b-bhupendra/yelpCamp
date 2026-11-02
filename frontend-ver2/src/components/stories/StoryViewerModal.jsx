@@ -241,7 +241,7 @@ export default function StoryViewerModal({
     const url = window.location.href;
     if (navigator.share) {
       navigator.share({
-        title: currentPhoto?.caption || 'YelpCamp Trail Moment',
+        title: currentPhoto?.caption || 'Meadows Trail Moment',
         url,
       }).catch(() => {});
     } else {

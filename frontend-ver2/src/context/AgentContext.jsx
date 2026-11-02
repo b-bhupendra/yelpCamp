@@ -301,7 +301,7 @@ export function AgentProvider({ children }) {
   useEffect(() => {
     const unregHome = registerAction({
       id: 'navigate_home',
-      description: 'Navigate to YelpCamp homepage',
+      description: 'Navigate to Meadows homepage',
       risk_level: 'SAFE',
       handler: () => navigate('/')
     });
@@ -325,28 +325,28 @@ export function AgentProvider({ children }) {
     });
     const unregLogin = registerAction({
       id: 'user_login',
-      feature_name: 'Sign In to YelpCamp',
+      feature_name: 'Sign In to Meadows',
       description: 'Navigate to the secure sign-in login portal with email or Google',
       risk_level: 'SAFE',
       handler: () => navigate('/login')
     });
     const unregLoginAlias = registerAction({
       id: 'navigate_login',
-      feature_name: 'Sign In to YelpCamp',
+      feature_name: 'Sign In to Meadows',
       description: 'Navigate to the sign-in login portal',
       risk_level: 'SAFE',
       handler: () => navigate('/login')
     });
     const unregRegister = registerAction({
       id: 'user_register',
-      feature_name: 'Join YelpCamp / Create Account',
+      feature_name: 'Join Meadows / Create Account',
       description: 'Navigate to the registration page to create a new scout profile',
       risk_level: 'SAFE',
       handler: () => navigate('/register')
     });
     const unregRegisterAlias = registerAction({
       id: 'navigate_register',
-      feature_name: 'Join YelpCamp / Create Account',
+      feature_name: 'Join Meadows / Create Account',
       description: 'Navigate to the registration page',
       risk_level: 'SAFE',
       handler: () => navigate('/register')
@@ -369,8 +369,8 @@ export function AgentProvider({ children }) {
     if (user) {
       const unregLogout = registerAction({
         id: 'user_logout',
-        feature_name: 'Log out of YelpCamp',
-        description: 'Terminate your active user session and log out of YelpCamp on this device. (Requires user confirmation)',
+        feature_name: 'Log out of Meadows',
+        description: 'Terminate your active user session and log out of Meadows on this device. (Requires user confirmation)',
         risk_level: 'MUTATE',
         handler: async () => {
           await logout();

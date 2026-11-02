@@ -264,7 +264,7 @@ export default function StoryUploadModal({
           <div className="flex items-start gap-2.5 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs">
             <Icon.Check size={16} className="shrink-0 mt-0.5" />
             <span>
-              <strong>Permanent Moment:</strong> This story will remain visible on YelpCamp until you choose to delete it.
+              <strong>Permanent Moment:</strong> This story will remain visible on Meadows until you choose to delete it.
             </span>
           </div>
 

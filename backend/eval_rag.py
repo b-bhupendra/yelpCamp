@@ -10,9 +10,9 @@ from typing import List, Dict, Any, Optional
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from sqlmodel import Session
-from database import engine
-from services.vector_store import CrossEncoderService, vector_store
-from services.multimodal_embedder import multimodal_embedder
+from app.core.database import engine
+from app.services.vector_store import CrossEncoderService, vector_store
+from app.services.multimodal_embedder import multimodal_embedder
 
 # ============================================================================
 # 1. GOLDEN EVALUATION CORPUS (Realistic Trap & Target Campsites)

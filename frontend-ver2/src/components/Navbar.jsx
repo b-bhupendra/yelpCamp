@@ -63,7 +63,7 @@ export default function Navbar() {
           className="cursor-pointer flex items-center gap-2.5 text-lg font-display font-black tracking-tight text-fg select-none"
         >
           <Icon.Tent size={22} className="text-secondary" />
-          <span>YelpCamp</span>
+          <span>Meadows</span>
         </Link>
       </Magnetic>
 
@@ -230,7 +230,7 @@ export default function Navbar() {
                 to="/register"
                 className="cursor-pointer min-h-[48px] rounded-xl px-4 py-3 text-sm font-bold text-on-primary bg-primary text-center shadow-[0_0_25px_rgba(14,165,233,0.35)] flex items-center justify-center transition-transform active:scale-[0.98]"
               >
-                Join YelpCamp
+                Join Meadows
               </Link>
             </div>
           )}

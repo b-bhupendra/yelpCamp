@@ -9,3 +9,6 @@ uploads/
 .vercel
 .env*
 !.env.example
+!.env.test
+test.db*
+.pytest_cache/

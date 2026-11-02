@@ -1,4 +1,4 @@
-# Production Dockerfile for YelpCamp FastAPI Backend on Google Cloud Run
+# Production Dockerfile for Meadows FastAPI Backend on Google Cloud Run
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -18,5 +18,4 @@ COPY . .
 EXPOSE 8080
 
 # Start Uvicorn bound to Cloud Run PORT
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT}
-
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT}

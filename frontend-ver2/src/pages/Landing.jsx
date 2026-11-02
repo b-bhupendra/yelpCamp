@@ -169,7 +169,7 @@ export default function Landing() {
               Engineered For The Elements
             </span>
             <h2 className="font-display text-2xl sm:text-3xl font-black leading-[1.05] tracking-tight text-fg md:text-5xl">
-              Why campers trust <span className="aurora-text">YelpCamp.</span>
+              Why campers trust <span className="aurora-text">Meadows.</span>
             </h2>
             <p className="mt-3 sm:mt-4 text-xs sm:text-sm md:text-base text-fg-muted max-w-xl mx-auto">
               Built by avid backpackers and certified wilderness guides to replace outdated directories with real terrain telemetry.
@@ -330,7 +330,7 @@ export default function Landing() {
         <ScrollReveal variant="fade-in" delay={100}>
           <div className="flex items-center justify-center gap-2 mb-2 sm:mb-3 text-secondary">
             <Icon.Flame size={18} />
-            <span className="font-display font-bold tracking-wider text-xs uppercase text-fg">YelpCamp Wilderness</span>
+            <span className="font-display font-bold tracking-wider text-xs uppercase text-fg">Meadows Wilderness</span>
           </div>
           <p className="text-[10px] sm:text-xs font-semibold tracking-[0.24em] sm:tracking-[0.28em] text-fg-subtle uppercase mb-4">
             Crafted for people who sleep under the stars

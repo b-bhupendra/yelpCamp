@@ -1,6 +1,6 @@
-# Backend Context (`BE_CONTEXT.md`) — YelpCamp FastAPI Backend
+# Backend Context (`BE_CONTEXT.md`) — Meadows FastAPI Backend
 
-> **Quick Summary**: The YelpCamp backend is a production-grade, asynchronous REST API built with **FastAPI**, **SQLModel** (SQLAlchemy + Pydantic v2), and **Turso (libSQL/SQLite)** with DiskANN vector search. It integrates **Google Gemini 3.5 & Multimodal Embedding models** for AI Co-Pilot agentic navigation and semantic search, **Cloudinary CDN** for media delivery, **Google OAuth 2.0 + JWT cookies/headers** for authentication, and **SlowAPI** for rate limiting.
+> **Quick Summary**: The Meadows backend is a production-grade, enterprise-ready REST API built with **FastAPI**, **SQLModel** (SQLAlchemy + Pydantic v2), and **Turso (libSQL/SQLite)** with DiskANN vector search. It integrates **Google Gemini 3.5 & Multimodal Embedding models** for AI Co-Pilot agentic navigation and semantic search, **Cloudinary CDN** for media delivery, **Google OAuth 2.0 + JWT cookies/headers** for authentication, **SlowAPI** for rate limiting, and an isolated automated **pytest** suite backed by SQLite.
 
 ---
 
@@ -9,205 +9,104 @@
 | Layer | Technology | Details / Purpose |
 | :--- | :--- | :--- |
 | **Framework** | FastAPI (`^0.115.0`) | Modern async web framework with automatic OpenAPI documentation (`/docs`) |
-| **ASGI Server** | Uvicorn (`^0.30.0`) | High-performance ASGI server (`uvicorn main:app --host 127.0.0.1 --port 8000`) |
+| **ASGI Server** | Uvicorn (`^0.30.0`) | High-performance ASGI server (`uvicorn app.main:app --host 127.0.0.1 --port 8000`) |
 | **ORM & Validation** | SQLModel (`^0.0.22`) | Unifies SQLAlchemy models and Pydantic v2 validation schemas |
-| **Database** | Turso (libSQL) / SQLite | Cloud libSQL via HTTP v2 pipeline (`turso_engine.py`) or local `database.db` |
+| **Database** | Turso (libSQL) / SQLite | Cloud libSQL via HTTP v2 pipeline or local `database.db` with PRAGMA foreign_keys |
 | **AI & Embeddings** | Google Gemini (`google-genai`) | `gemini-embedding-2` (768-dim vectors) & `gemini-3.5-flash` for RAG and agent actions |
-| **CDN & Image Storage** | Cloudinary (`cloudinary^1.41.0`) | Automated format conversion (WebP/AVIF), responsive delivery, and thumbnail crops |
+| **CDN & Image Storage** | Cloudinary (`cloudinary^1.41.0`) | Automated WebP conversion, responsive delivery, and thumbnail crops under `meadows/` |
 | **Authentication** | PyJWT (`^2.9.0`) + Passlib | Secure JWT access tokens via HTTP-only cookies and `Authorization: Bearer <token>` |
 | **Rate Limiter** | SlowAPI (`slowapi^0.1.9`) | IP-based rate limiting per route (auth, social actions, AI copilot, media upload) |
+| **Testing Suite** | Pytest (`pytest^8.0.0`, `httpx`) | Isolated automated unit and integration tests using SQLite `test.db` and TestClient |
 
 ---
 
-## 2. Architecture & Directory Layout
+## 2. Enterprise Clean Architecture Layout
 
 ```text
 backend/
-├── main.py                     # App factory, lifespan startup, CORS, middleware, route mounting
-├── config.py                   # Pydantic BaseSettings loading from .env
-├── database.py                 # Engine factory (Turso vs SQLite), triggers init, Alembic migrations
-├── models.py                   # 3NF SQLModel relational database models with ON DELETE CASCADE
-├── schemas.py                  # Pydantic request/response validation schemas & computed fields
-├── security.py                 # Password hashing (bcrypt) & JWT encode/decode
-├── dependencies.py             # Auth dependencies (get_current_user, is_logged_in, check_author)
-├── turso_engine.py             # Custom DBAPI / cursor adapter for Turso Cloud HTTP v2 pipeline
-├── repositories/               # SOLID Repository Pattern (pure SQL offload & aggregations)
-│   ├── __init__.py             # Repository exports
-│   ├── campground_repo.py      # Paginated search, single-pass metrics, cascade delete
-│   ├── comment_repo.py         # Threaded recursive trees, author map hydration
-│   ├── story_repo.py           # json_group_array(json_object(...)) grouping, moments
-│   └── social_repo.py          # Atomic voting, wishlist toggling, dashboard summaries
-├── routers/                    # Ultra-thin route controllers (threadpooled via def)
-│   ├── auth.py                 # Register, login, logout, Google OAuth, /api/me
-│   ├── campgrounds.py          # CRUD campsites, pagination, image upload
-│   ├── comments.py             # Threaded comments on campgrounds
-│   ├── social.py               # Upvotes/downvotes, wishlists, check-ins, trips, dashboard
-│   ├── visitor_photos.py       # Backcountry moments, 24h stories, photo likes & comments
-│   └── vector_rag.py           # Vector search, RAG chat, AI Co-Pilot agent interaction & UI sync
-├── services/                   # Business logic and external service clients
-│   ├── cloudinary_service.py   # Cloudinary image upload, thumbnailing, DiceBear fallback avatars
-│   ├── google_auth_service.py  # Google ID token verification via google-auth
-│   ├── image_validator.py      # Content moderation and image URL sanitization
-│   ├── limiter.py              # SlowAPI rate limiter instances and key extractors
-│   ├── multimodal_embedder.py  # Gemini vision & text embedding generation pipeline
-│   ├── rag_service.py          # Grounded RAG conversational engine with Gemini
-│   ├── vector_store.py         # DiskANN vector index and cosine similarity search engine
-│   └── vision_service.py       # Image captioning and scenery tag extraction
-└── database.db                 # Local SQLite database fallback (500 seeded campgrounds)
+├── main.py                         # Root entrypoint proxy (from app.main import app)
+├── Dockerfile                      # Production Cloud Run container definition
+├── alembic.ini                     # Alembic migration configuration
+├── pytest.ini                      # Pytest suite configuration
+├── requirements.txt                # Production and testing Python dependencies
+├── alembic/                        # Database migration scripts
+│   ├── env.py                      # Configured to inspect SQLModel metadata
+│   └── versions/                   # Migration versions
+├── api/                            # Vercel Serverless Function entrypoint
+│   └── index.py                    # Imports app from app.main
+├── app/                            # Primary application package
+│   ├── main.py                     # FastAPI app factory, lifespan, CORS, route dual-mounting
+│   ├── api/                        # API Routing & Controllers
+│   │   ├── deps.py                 # Dependencies (get_db, get_current_user, is_logged_in)
+│   │   └── v1/
+│   │       ├── api.py              # Central API router aggregator (mounts endpoints)
+│   │       └── endpoints/          # Thin controllers
+│   │           ├── auth.py         # Register, login, logout, Google OAuth, /api/me
+│   │           ├── campgrounds.py  # Campsites CRUD, pagination, image upload
+│   │           ├── comments.py     # Threaded hierarchy comments & reviews
+│   │           ├── visitor_photos.py # Stories, backcountry moments, likes & photo comments
+│   │           ├── social.py       # Upvotes, downvotes, wishlists, check-ins, trips, dashboard
+│   │           └── vector_rag.py   # Semantic search, RAG chat, AI Co-Pilot agent & UI sync
+│   ├── core/                       # Core infrastructure & configuration
+│   │   ├── config.py               # Pydantic BaseSettings loading from .env or .env.test
+│   │   ├── database.py             # Engine factory, SQLite triggers, Alembic runner
+│   │   ├── security.py             # Password hashing (bcrypt) & JWT encode/decode
+│   │   └── turso_engine.py         # Turso Cloud HTTP v2 pipeline adapter
+│   ├── models/                     # Relational domain models (SQLModel table=True)
+│   │   ├── user.py                 # User table
+│   │   ├── campground.py           # Campground, Vote, CampgroundEmbedding
+│   │   ├── comment.py              # Comment table
+│   │   ├── visitor_photo.py        # VisitorPhoto, VisitorPhotoLike
+│   │   ├── social.py               # Wishlist, CheckIn, Trip, TripMember
+│   │   └── ui_navigation.py        # UINavigation table
+│   ├── schemas/                    # Pydantic request/response validation schemas (DTOs)
+│   │   ├── common.py               # PaginatedResponse, FileUploadResponse
+│   │   ├── auth.py                 # UserCreate, UserLogin, UserOut, TokenResponse
+│   │   ├── campground.py           # CampgroundCreate, CampgroundUpdate, CampgroundOut, PaginatedCampgrounds
+│   │   ├── comment.py              # CommentCreate, CommentOut
+│   │   ├── visitor_photo.py        # VisitorPhotoCreate, VisitorPhotoOut, VisitorStoryGroupOut
+│   │   ├── social.py               # DashboardResponse, CheckInOut, TripOut
+│   │   └── rag.py                  # SearchRequest, ChatRequest, AgentInteractRequest/Response
+│   ├── services/                   # Business logic layer
+│   │   ├── auth_service.py         # Authentication and registration logic
+│   │   ├── campground_service.py   # Campsite business workflows
+│   │   ├── comment_service.py      # Comment workflows
+│   │   ├── story_service.py        # Story tray and moments logic
+│   │   ├── cloudinary_service.py   # CDN uploads and avatar generation
+│   │   ├── google_auth_service.py  # Google ID token verification
+│   │   ├── image_validator.py      # Moderation and image sanitization
+│   │   ├── limiter.py              # SlowAPI rate limiter
+│   │   ├── multimodal_embedder.py  # Gemini vector embeddings (768-dim)
+│   │   ├── rag_service.py          # Gemini AI Co-Pilot reasoning and function calling
+│   │   └── vector_store.py         # 3-stage hybrid search & FlashRank reranker
+│   └── repositories/               # SQL offload layer (pure database computation)
+│       ├── campground_repo.py      # Paginated search, single-pass metrics, cascade delete
+│       ├── comment_repo.py         # Threaded recursive trees, author map hydration
+│       ├── story_repo.py           # json_group_array(json_object(...)) grouping
+│       └── social_repo.py          # Atomic voting, wishlist toggling, dashboard summaries
+└── tests/                          # Automated Pytest Suite
+    ├── conftest.py                 # Test fixtures (test_engine, db_session, client, auth_headers)
+    ├── test_auth.py                # Registration, login, JWT cookies, profile retrieval
+    ├── test_campgrounds.py         # Pagination, creation, updates, deletes
+    ├── test_comments.py            # Comments, threaded replies, SQLite rating recalculation triggers
+    ├── test_stories.py             # Story tray, moments, like toggling
+    └── test_api_integration.py     # End-to-end user lifecycle & dual-mount verification
 ```
 
 ---
 
-## 3. Database Models & Schema (`models.py`)
+## 3. Running Tests & Verification
 
-The relational database schema is managed via SQLModel. All major entities support bidirectional relationships:
-
-```mermaid
-erDiagram
-    USER ||--o{ CAMPGROUND : "authors"
-    USER ||--o{ COMMENT : "posts"
-    USER ||--o{ VOTE : "casts"
-    USER ||--o{ WISHLIST : "saves"
-    USER ||--o{ CHECKIN : "visits"
-    USER ||--o{ VISITOR_PHOTO : "uploads"
-    USER ||--o{ TRIP : "manages"
-    CAMPGROUND ||--o{ COMMENT : "receives"
-    CAMPGROUND ||--o{ VOTE : "has"
-    CAMPGROUND ||--o{ VISITOR_PHOTO : "contains"
-    CAMPGROUND ||--o{ WISHLIST : "favorited_by"
-    VISITOR_PHOTO ||--o{ COMMENT : "receives"
-    VISITOR_PHOTO ||--o{ VISITOR_PHOTO_LIKE : "has"
-```
-
-### Key Models:
-* **`User`**: `id`, `username`, `hashed_password`, `avatar_url`. Relationships: `campgrounds`, `comments`, `wishlist`, `check_ins`, `votes`, `visitor_photos`.
-* **`Campground`**: `id`, `title`, `price` (float), `image`, `description`, `location`, `location_address`, `gallery_images` (JSON list), `amenities` (JSON list), `rules` (JSON), `avg_rating` (auto-calculated via SQLite triggers), `ai_media_caption`, `community_summary`, `author_id` (FK -> user.id ON DELETE CASCADE).
-* **`VisitorPhoto`**: `id`, `campground_id` (FK -> campground.id ON DELETE CASCADE), `user_id` (FK -> user.id ON DELETE CASCADE), `media_type`, `image_url`, `caption`, `ai_tags` (JSON), `created_at`, `expires_at` (null for permanent, Unix timestamp for 24h stories).
-* **`Vote`**: `user_id` (FK -> user.id ON DELETE CASCADE), `campground_id` (FK -> campground.id ON DELETE CASCADE), `vote_type` (`1` = like, `-1` = dislike). Composite PK: `(user_id, campground_id)`.
-* **`Comment`**: `id`, `text`, `parent_comment_id` (FK -> comment.id ON DELETE CASCADE), `rating` (1-5 with CheckConstraint), `author_id` (FK -> user.id ON DELETE CASCADE), `campground_id` (FK -> campground.id ON DELETE CASCADE), `photo_id` (FK -> visitor_photos.id ON DELETE CASCADE), `created_at`.
-* **`Wishlist`**: `user_id` (FK -> user.id ON DELETE CASCADE), `campground_id` (FK -> campground.id ON DELETE CASCADE). Composite PK: `(user_id, campground_id)`.
-* **`CheckIn`**: `id`, `user_id`, `campground_id`, `timestamp`.
-* **`Trip` & `TripMember`**: Multi-camper collaborative backcountry trip planner.
-* **`CampgroundEmbedding`**: High-dimensional vector embeddings (`768-dim`) stored for semantic RAG search.
-* **`UINavigation`**: Registry of DOM element actions, feature names, and routes used by the AI Agent.
-
----
-
-## 4. API Endpoints Reference
-
-### 4.1 Authentication (`/api/auth` & `/api`)
-| Method | Route | Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/register` | Register new user; sets HTTP-only cookie + returns JWT | No |
-| `POST` | `/api/login` | Login with username/password; sets cookie + returns JWT | No |
-| `POST` | `/api/logout` | Clears auth cookie and session | No |
-| `GET` | `/api/me` | Validates session and returns current user profile | Yes (Bearer/Cookie) |
-| `POST` | `/api/auth/google` | Google OAuth 2.0 credential sign-in / signup | No |
-| `POST` | `/api/me/avatar` | Upload and set profile picture on Cloudinary | Yes |
-
-### 4.2 Campgrounds (`/api/campgrounds`)
-| Method | Route | Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/campgrounds` | Fast paginated campsite list with SQL `COUNT(*)` & batched votes | No |
-| `POST` | `/api/campgrounds` | Create a campsite and trigger background multimodal embedding | Yes |
-| `GET` | `/api/campgrounds/{id}` | Full campsite details, comments tree, and author info | No |
-| `PUT` | `/api/campgrounds/{id}` | Update campsite details (author only) | Yes (Author) |
-| `DELETE` | `/api/campgrounds/{id}` | Cascade delete campsite, comments, photos, votes, embeddings | Yes (Author) |
-| `POST` | `/api/campgrounds/upload` | Upload campsite photo to Cloudinary CDN | Yes |
-
-### 4.3 Social & Interactivity (`/api`)
-| Method | Route | Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/campgrounds/{id}/vote` | Toggle like (+1) or dislike (-1) on a campsite | Yes |
-| `GET` | `/api/campgrounds/{id}/stats` | Get vote stats (`likes`, `dislikes`) | No |
-| `POST` | `/api/campgrounds/{id}/wishlist` | Toggle campsite in user's saved wishlist | Yes |
-| `GET` | `/api/me/dashboard` | Stats, hosted campsites, and wishlist for current user | Yes |
-| `POST` | `/api/campgrounds/{id}/checkin` | Record a verified visit to a campground | Yes |
-| `GET` | `/api/trips` | List collaborative trips for user | Yes |
-| `POST` | `/api/trips` | Create new collaborative trip | Yes |
-
-### 4.4 Stories & Backcountry Moments (`/api`)
-| Method | Route | Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/stories` | Active story tray grouped by user (capped at 40, batched comment counts) | No |
-| `GET` | `/api/campgrounds/{id}/stories` | Stories & visitor photos for specific campsite | No |
-| `POST` | `/api/campgrounds/{id}/stories` | Upload 24h story or permanent highlight | Yes |
-| `POST` | `/api/stories/{photo_id}/like` | Toggle like on a visitor moment | Yes |
-| `DELETE` | `/api/stories/{photo_id}` | Delete uploaded story (author only) | Yes (Author) |
-| `GET` | `/api/stories/{photo_id}/comments` | Get comments on a story photo | No |
-| `POST` | `/api/stories/{photo_id}/comments` | Add comment to a story photo | Yes |
-
-### 4.5 AI Vector RAG & Agent (`/api/rag`, `/api/agent`)
-| Method | Route | Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/rag/search` | Natural language semantic vector search (`query`, `limit`, `min_score`) | No |
-| `POST` | `/api/rag/chat` | Contextual conversational chatbot grounded in YelpCamp database | No |
-| `POST` | `/api/agent/interact` | AI Co-Pilot agent execution with tool calling and UI spotlighting | No |
-| `POST` | `/api/agent/sync-ui` | Sync current frontend route/modal state with backend AI Agent | No |
-
----
-
-## 5. High-Performance Query Architecture
-
-The backend implements strict patterns to prevent N+1 queries and high latency over Turso Cloud:
-
-1. **Lightweight SQL `COUNT(*)`**: `list_campgrounds` runs `db.exec(select(func.count(Campground.id)).where(...)).one()`, avoiding loading all 501 rows into Python memory.
-2. **Dedicated Card Formatter (`format_campground_card`)**: Serializes only grid-required fields without accessing unneeded relationships (`comments`, `visitor_photos`, `rules`).
-3. **Batch-Grouped Votes**: Aggregates likes and dislikes for all paginated cards in **1 single SQL query**:
-   ```sql
-   SELECT campground_id, vote_type, count(user_id) 
-   FROM vote 
-   WHERE campground_id IN (1, 2, ... 12) 
-   GROUP BY campground_id, vote_type;
-   ```
-4. **Batch Comment Counts for Stories**: `get_active_stories` queries comment counts in 1 grouped SQL query, eliminating lazy-load queries across dozens of photos.
-5. **Guarded Schema Migrations**: Startup checks avoid firing 25+ redundant `ALTER TABLE` and `CREATE INDEX` queries over HTTP during server reloads.
-
----
-
-## 6. Configuration & Environment Variables
-
-Configured in `backend/.env` or deployment runtime:
+All Python commands should be executed via `uv run` to guarantee isolated execution with pinned dependencies:
 
 ```bash
-# Core
-PROJECT_NAME="YelpCamp API"
-ENVIRONMENT="production"            # "production" | "development"
-SECRET_KEY="<32+ char secret>"
-ACCESS_TOKEN_EXPIRE_MINUTES=10080  # 7 days
+# Run the complete test suite
+cd backend
+uv run --with-requirements requirements.txt python -m pytest tests/ -v
 
-# Database: Toggle between Cloud Turso and Local SQLite
-DATABASE_URL="sqlite:///database.db"
-USE_TURSO=True                      # Set False for 25ms local SQLite development
-TURSO_DATABASE_URL="https://yelpcamp-db-...turso.io"
-TURSO_AUTH_TOKEN="<turso jwt token>"
+# Run the 3-stage hybrid RAG & agent guardrail benchmark
+uv run --with-requirements requirements.txt python eval_rag.py
 
-# Cloudinary CDN
-CLOUDINARY_CLOUD_NAME="<cloud_name>"
-CLOUDINARY_API_KEY="<api_key>"
-CLOUDINARY_API_SECRET="<api_secret>"
-
-# Google OAuth 2.0
-GOOGLE_CLIENT_ID="<client_id>.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET="<client_secret>"
-
-# Google Gemini RAG
-GEMINI_API_KEY="<gemini_api_key>"
-EMBEDDING_MODEL="gemini-embedding-2"
-CHAT_MODEL="gemini-3.5-flash"
-VISION_MODEL="gemini-3.5-flash"
+# Run development server
+uv run --with-requirements requirements.txt uvicorn app.main:app --reload --port 8000
 ```
-
----
-
-## 7. Running the Backend Locally
-
-```powershell
-# From the backend directory:
-cd d:\Projects\yelpCamp\backend
-
-# Activate virtualenv and start Uvicorn
-.\venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
-```
-* Interactive API Documentation (Swagger UI): `http://127.0.0.1:8000/docs`
-* Alternative Redoc Documentation: `http://127.0.0.1:8000/redoc`

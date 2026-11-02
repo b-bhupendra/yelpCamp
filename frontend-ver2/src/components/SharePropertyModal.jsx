@@ -33,7 +33,7 @@ export default function SharePropertyModal({
     setTimeout(() => setCopied(false), 2200);
   };
 
-  const shareText = encodeURIComponent(`Check out ${campTitle} on YelpCamp: ${currentUrl}`);
+  const shareText = encodeURIComponent(`Check out ${campTitle} on Meadows: ${currentUrl}`);
 
   const shareLinks = [
     {
