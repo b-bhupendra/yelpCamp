@@ -29,7 +29,7 @@ function LiquidChromeGeometry({ isMobile, isTouch }) {
   });
 
   const geoScale = isMobile ? 0.78 : 1.15;
-  const geoY = 0;
+  const geoY = isMobile ? 0.04 : 0.08;
 
   return (
     <Float speed={2} rotationIntensity={0.2} floatIntensity={0.5}>
@@ -190,9 +190,9 @@ export default function SleekMasterpieceHero() {
       {/* LAYER 2: typography */}
       <motion.div
         style={reduced ? undefined : { y: yText, opacity: opacityText }}
-        className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none px-4 py-12"
+        className="absolute inset-0 z-20 flex flex-col items-center justify-start pt-[10dvh] sm:pt-[12dvh] md:pt-[14vh] pointer-events-none px-4"
       >
-        <span className="inline-flex items-center gap-2 px-3.5 py-1.5 mb-3.5 sm:mb-4 rounded-full border border-sky-400/30 bg-background/70 backdrop-blur-md text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.24em] text-sky-400 shadow-[0_0_24px_rgba(56,189,248,0.25)]">
+        <span className="inline-flex items-center gap-2 px-3.5 py-1.5 mb-3.5 sm:mb-5 md:mb-6 rounded-full border border-sky-400/30 bg-background/70 backdrop-blur-md text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.24em] text-sky-400 shadow-[0_0_24px_rgba(56,189,248,0.25)]">
           <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping" />
           Under the Stars & Aurora
         </span>
