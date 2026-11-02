@@ -29,7 +29,7 @@ function LiquidChromeGeometry({ isMobile, isTouch }) {
   });
 
   const geoScale = isMobile ? 0.78 : 1.15;
-  const geoY = isMobile ? 0.04 : 0.08;
+  const geoY = 0;
 
   return (
     <Float speed={2} rotationIntensity={0.2} floatIntensity={0.5}>
@@ -190,31 +190,37 @@ export default function SleekMasterpieceHero() {
       {/* LAYER 2: typography */}
       <motion.div
         style={reduced ? undefined : { y: yText, opacity: opacityText }}
-        className="absolute inset-0 z-20 flex flex-col items-center justify-start pt-[10dvh] sm:pt-[12dvh] md:pt-[14vh] pointer-events-none px-4"
+        className="absolute inset-0 z-20 pointer-events-none px-4"
       >
-        <span className="inline-flex items-center gap-2 px-3.5 py-1.5 mb-3.5 sm:mb-5 md:mb-6 rounded-full border border-sky-400/30 bg-background/70 backdrop-blur-md text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.24em] text-sky-400 shadow-[0_0_24px_rgba(56,189,248,0.25)]">
-          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping" />
-          Under the Stars & Aurora
-        </span>
-
-        <div className="relative flex flex-col items-center justify-center">
-          {/* Multi-spectrum Aurora Gradient Aura directly behind Meadows */}
-          <div
-            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] max-w-[700px] h-[130px] sm:h-[180px] rounded-full opacity-70 mix-blend-screen blur-[45px] sm:blur-[60px]"
-            style={{
-              background: 'linear-gradient(90deg, rgba(56, 189, 248, 0.5) 0%, rgba(14, 165, 233, 0.35) 30%, rgba(251, 191, 36, 0.4) 75%, rgba(234, 88, 12, 0.25) 100%)',
-            }}
-            aria-hidden="true"
-          />
-
-          <h1 className="relative z-10 text-[clamp(3.2rem,11.5vw,10.5rem)] font-display font-black tracking-[-0.035em] leading-[0.88] text-center aurora-hero-title [filter:drop-shadow(0_4px_45px_rgba(3,7,18,0.95))_drop-shadow(-10px_4px_35px_rgba(56,189,248,0.45))_drop-shadow(10px_4px_35px_rgba(251,191,36,0.35))] select-none">
-            Meadows
-          </h1>
+        {/* Crown Badge Pill: Preserved at original upper position */}
+        <div className="absolute top-[10dvh] sm:top-[12dvh] md:top-[14vh] left-0 right-0 flex justify-center z-10">
+          <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-sky-400/30 bg-background/70 backdrop-blur-md text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.24em] text-sky-400 shadow-[0_0_24px_rgba(56,189,248,0.25)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping" />
+            Under the Stars & Aurora
+          </span>
         </div>
 
-        <p className="mt-3.5 sm:mt-5 text-xs sm:text-sm md:text-base font-medium text-slate-300 max-w-xs sm:max-w-md md:max-w-xl text-center tracking-wide leading-relaxed [text-shadow:0_2px_24px_rgba(3,7,18,0.95)]">
-          Discover extraordinary campsites, secret clearings, and dark-sky sanctuaries.
-        </p>
+        {/* Hero Title & Subheadline: Centered directly across the 3D globe as drawn in the user's diagram */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pt-6 sm:pt-8 md:pt-10 z-10">
+          <div className="relative flex flex-col items-center justify-center">
+            {/* Multi-spectrum Aurora Gradient Aura directly behind Meadows */}
+            <div
+              className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[115%] max-w-[700px] h-[130px] sm:h-[180px] rounded-full opacity-70 mix-blend-screen blur-[45px] sm:blur-[60px]"
+              style={{
+                background: 'linear-gradient(90deg, rgba(56, 189, 248, 0.5) 0%, rgba(14, 165, 233, 0.35) 30%, rgba(251, 191, 36, 0.4) 75%, rgba(234, 88, 12, 0.25) 100%)',
+              }}
+              aria-hidden="true"
+            />
+
+            <h1 className="relative z-10 text-[clamp(3.2rem,11.5vw,10.5rem)] font-display font-black tracking-[-0.035em] leading-[0.88] text-center aurora-hero-title [filter:drop-shadow(0_4px_45px_rgba(3,7,18,0.95))_drop-shadow(-10px_4px_35px_rgba(56,189,248,0.45))_drop-shadow(10px_4px_35px_rgba(251,191,36,0.35))] select-none">
+              Meadows
+            </h1>
+          </div>
+
+          <p className="mt-3.5 sm:mt-5 text-xs sm:text-sm md:text-base font-medium text-slate-300 max-w-xs sm:max-w-md md:max-w-xl text-center tracking-wide leading-relaxed [text-shadow:0_2px_24px_rgba(3,7,18,0.95)] px-4">
+            Discover extraordinary campsites, secret clearings, and dark-sky sanctuaries.
+          </p>
+        </div>
       </motion.div>
 
       {/* Fade into the rest of the page */}
