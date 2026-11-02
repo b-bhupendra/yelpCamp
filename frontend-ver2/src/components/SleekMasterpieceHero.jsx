@@ -5,59 +5,62 @@ import { Environment, Lightformer, Float, MeshDistortMaterial, ContactShadows } 
 import CanvasErrorBoundary from './CanvasErrorBoundary';
 
 /**
- * THE HERO CENTERPIECE — liquid-chrome geometry lit by the aurora palette.
- * Reacts physically to the pointer in the WebGL frame loop without React re-renders.
+ * THE 3D CELESTIAL ORB GEOMETRY
+ * True sphere with subdivisions 64, subtle organic distortion (0.14),
+ * and damped pointer interaction in the WebGL loop.
  */
-function LiquidChromeGeometry({ isMobile, isTouch }) {
+function ConcentricOrbGeometry({ isMobile, isTouch }) {
   const meshRef = useRef();
 
   useFrame((state) => {
     if (!meshRef.current) return;
     const t = state.clock.getElapsedTime();
-    // Gentle autonomous oscillation for touch screens
     if (isTouch) {
-      meshRef.current.rotation.y = Math.sin(t * 0.45) * 0.22;
-      meshRef.current.rotation.x = Math.cos(t * 0.35) * 0.14;
+      meshRef.current.rotation.y = Math.sin(t * 0.4) * 0.15;
+      meshRef.current.rotation.x = Math.cos(t * 0.3) * 0.1;
     } else {
-      // Damped pointer follow directly in WebGL frame loop without React re-renders
-      const targetY = state.pointer.x * 0.4;
-      const targetX = -state.pointer.y * 0.4;
+      const targetY = state.pointer.x * 0.35;
+      const targetX = -state.pointer.y * 0.35;
       meshRef.current.rotation.y += (targetY - meshRef.current.rotation.y) * 0.05;
       meshRef.current.rotation.x += (targetX - meshRef.current.rotation.x) * 0.05;
     }
-    meshRef.current.rotation.z = Math.sin(t * 0.5) * 0.1;
+    meshRef.current.rotation.z = Math.sin(t * 0.4) * 0.08;
   });
 
-  const geoScale = isMobile ? 0.78 : 1.15;
-  const geoY = 0;
+  const geoScale = isMobile ? 1.45 : 1.7;
 
   return (
-    <Float speed={2} rotationIntensity={0.2} floatIntensity={0.5}>
+    <Float speed={1.5} rotationIntensity={0.15} floatIntensity={0.35}>
       <mesh
         ref={meshRef}
-        position={[0, geoY, 0]}
+        position={[0, 0, 0]}
         scale={[geoScale, geoScale, geoScale]}
-        castShadow
       >
-        <icosahedronGeometry args={[1, isMobile ? 32 : 64]} />
+        {/* Sphere with 64 subdivisions */}
+        <sphereGeometry args={[1, 64, 64]} />
         <MeshDistortMaterial
           color="#0b2740"
           emissive="#0ea5e9"
-          emissiveIntensity={0.28}
-          roughness={0.38}
-          metalness={0.5}
-          distort={0.32}
-          speed={1.5}
-          clearcoat={0.5}
-          clearcoatRoughness={0.35}
+          emissiveIntensity={0.15}
+          roughness={0.36}
+          metalness={0.45}
+          distort={0.14}
+          speed={0.8}
+          clearcoat={0.6}
+          clearcoatRoughness={0.25}
         />
       </mesh>
     </Float>
   );
 }
 
+/**
+ * SLEEK MASTERPIECE HERO STACK
+ * Encapsulates the Eyebrow pill, Wordmark with concentric 3D Orb, and Tagline.
+ * All layers share ONE motion.div for unified scroll parallax, with the 3D orb
+ * receiving a 0.6x secondary depth offset.
+ */
 export default function SleekMasterpieceHero() {
-  const containerRef = useRef(null);
   const [reduced, setReduced] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState({ isMobile: false, isTouch: false });
   const [canvasReady, setCanvasReady] = useState(false);
@@ -65,7 +68,7 @@ export default function SleekMasterpieceHero() {
   useEffect(() => {
     const mqReduced = window.matchMedia('(prefers-reduced-motion: reduce)');
     const mqTouch = window.matchMedia('(hover: none), (pointer: coarse)');
-    
+
     const updateDevice = () => {
       setReduced(mqReduced.matches);
       setDeviceInfo({
@@ -86,145 +89,112 @@ export default function SleekMasterpieceHero() {
     };
   }, []);
 
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ['start start', 'end start'],
-  });
+  const { scrollY } = useScroll();
+  const smoothScroll = useSpring(scrollY, { stiffness: 80, damping: 24 });
 
-  const smoothProgress = useSpring(scrollYProgress, { stiffness: 70, damping: 20 });
-  const yText = useTransform(smoothProgress, [0, 1], [0, 360]);
-  const opacityText = useTransform(smoothProgress, [0, 0.45], [1, 0]);
+  // Hero stack parallax
+  const yStack = useTransform(smoothScroll, [0, 600], [0, 200]);
+  const opacityStack = useTransform(smoothScroll, [0, 380], [1, 0]);
+
+  // Orb canvas slower secondary offset for 0.6x relative depth (200 - 80 = 120px = 0.6x)
+  const yOrbSecondary = useTransform(smoothScroll, [0, 600], [0, -80]);
 
   return (
-    <div
-      ref={containerRef}
-      className="relative w-full min-h-[100dvh] h-[100dvh] md:h-[120vh] overflow-hidden"
+    <motion.div
+      style={reduced ? undefined : { y: yStack, opacity: opacityStack }}
+      className="relative z-10 flex flex-col items-center justify-center text-center w-full max-w-5xl mx-auto"
     >
-      {/* ── AURORA LIGHT SPILL & AMBIENT HEARTH GLOW (Allowing procedural aurora to shine) ── */}
-      <div 
-        className="pointer-events-none absolute inset-0 z-[4] overflow-hidden select-none"
-        aria-hidden="true"
-      >
-        {/* Upper Aurora Ethereal Bloom (Soft, non-competing) */}
-        <div 
-          className="absolute top-[4%] sm:top-[6%] left-1/2 -translate-x-1/2 w-[92vw] sm:w-[80vw] max-w-[950px] h-[260px] sm:h-[380px] rounded-full pointer-events-none"
-          style={{
-            background: 'radial-gradient(circle, rgba(16, 185, 129, 0.06) 0%, rgba(56, 189, 248, 0.08) 40%, rgba(129, 140, 248, 0.04) 70%, transparent 80%)',
-            filter: 'blur(70px)',
-          }}
-        />
-
-        {/* Campfire warmth & ember hearth reflection from horizon */}
-        <div 
-          className="absolute bottom-[20%] sm:bottom-[22%] left-1/2 -translate-x-1/2 w-[85vw] sm:w-[65vw] max-w-[650px] h-[220px] sm:h-[280px] rounded-full pointer-events-none ch-glow"
-          style={{
-            background: 'radial-gradient(circle, rgba(234, 88, 12, 0.16) 0%, rgba(251, 146, 60, 0.06) 45%, transparent 72%)',
-            filter: 'blur(60px)',
-          }}
-        />
-
-        {/* Soft twilight gradient framing */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/90" />
+      {/* ── EYEBROW PILL (12px, 600, tracking 0.22em, 24px above wordmark) ── */}
+      <div className="mb-6 flex justify-center z-20">
+        <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-sky-400/25 bg-background/80 backdrop-blur-md text-[12px] font-semibold uppercase tracking-[0.22em] text-sky-300 shadow-[0_0_20px_rgba(56,189,248,0.18)]">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+          Under the Stars &amp; Aurora
+        </span>
       </div>
 
-      {/* LAYER 1: hardware-accelerated canvas */}
-      <div
-        className="absolute inset-0 z-10 transition-opacity duration-1000 ease-out"
-        style={{ opacity: canvasReady ? 1 : 0 }}
-        aria-hidden="true"
-      >
-        <CanvasErrorBoundary>
-        <Canvas
-          onCreated={() => setCanvasReady(true)}
-          camera={{ position: [0, 0, deviceInfo.isMobile ? 5.8 : 6.5], fov: 45 }}
-          gl={{ alpha: true, antialias: true, powerPreference: 'high-performance' }}
-          dpr={deviceInfo.isMobile ? [1, 1.25] : [1, 1.5]}
-          frameloop={reduced ? 'demand' : 'always'}
+      {/* ── WORDMARK GROUP CONCENTRIC WITH 3D ORB ── */}
+      {/* Container height min(36vh, 28vw) guarantees the orb bottom aligns with group boundary */}
+      <div className="relative flex items-center justify-center min-h-[min(36vh,28vw)] w-full">
+        {/* 3D Orb Canvas: absolute child of wordmark group, strictly concentric */}
+        <motion.div
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(46vh,34vw)] min-w-[280px] sm:min-w-[340px] aspect-square overflow-visible pointer-events-auto z-0 transition-opacity duration-1000 ease-out"
+          style={{
+            ...(reduced ? {} : { y: yOrbSecondary }),
+            opacity: canvasReady ? 1 : 0,
+          }}
+          aria-hidden="true"
         >
-          <ambientLight intensity={0.16} />
-          {/* Aurora key (cyan & emerald) + warm campfire rim light */}
-          <directionalLight position={[4, 5, 3]} intensity={0.65} color="#38bdf8" />
-          <directionalLight position={[-4, 4, 2]} intensity={0.5} color="#10b981" />
-          <directionalLight position={[-5, -2, -4]} intensity={0.55} color="#ea580c" />
+          <CanvasErrorBoundary>
+            <Canvas
+              onCreated={() => setCanvasReady(true)}
+              camera={{ position: [0, 0, 5.2], fov: 45 }}
+              gl={{ alpha: true, antialias: true, powerPreference: 'high-performance' }}
+              dpr={deviceInfo.isMobile ? [1, 1.25] : [1, 1.5]}
+              frameloop={reduced ? 'demand' : 'always'}
+            >
+              <ambientLight intensity={0.18} />
+              {/* Aurora cyan & emerald key lights + warm campfire rim light */}
+              <directionalLight position={[4, 5, 3]} intensity={0.7} color="#38bdf8" />
+              <directionalLight position={[-4, 4, 2]} intensity={0.5} color="#10b981" />
+              <directionalLight position={[-5, -2, -4]} intensity={0.55} color="#ea580c" />
 
-          {/* Aurora + campfire image-based lighting environment */}
-          <Environment resolution={deviceInfo.isMobile ? 128 : 256}>
-            <Lightformer intensity={1.8} position={[0, 6, -9]} scale={[10, 10, 1]} color="#38bdf8" />
-            <Lightformer intensity={1.4} position={[-5, 5, -5]} scale={[8, 8, 1]} color="#10b981" />
-            <Lightformer intensity={1.2} position={[-6, 1, -2]} scale={[10, 10, 1]} color="#ea580c" />
-            <Lightformer intensity={0.8} position={[6, 1, -2]} scale={[10, 10, 1]} color="#67e8f9" />
-            <Lightformer intensity={0.6} position={[0, -5, 2]} scale={[10, 10, 1]} color="#0ea5e9" />
-            <Lightformer intensity={0.25} position={[0, 2, 6]} scale={[8, 8, 1]} color="#ffffff" />
-          </Environment>
+              <Environment resolution={deviceInfo.isMobile ? 128 : 256}>
+                <Lightformer intensity={1.8} position={[0, 6, -9]} scale={[10, 10, 1]} color="#38bdf8" />
+                <Lightformer intensity={1.4} position={[-5, 5, -5]} scale={[8, 8, 1]} color="#10b981" />
+                <Lightformer intensity={1.2} position={[-6, 1, -2]} scale={[10, 10, 1]} color="#ea580c" />
+                <Lightformer intensity={0.8} position={[6, 1, -2]} scale={[10, 10, 1]} color="#67e8f9" />
+                <Lightformer intensity={0.6} position={[0, -5, 2]} scale={[10, 10, 1]} color="#0ea5e9" />
+                <Lightformer intensity={0.25} position={[0, 2, 6]} scale={[8, 8, 1]} color="#ffffff" />
+              </Environment>
 
-          {/* Warm cross-light from the campfire below — cinematic blue/amber contrast */}
-          <pointLight position={[0, -2.6, 2.6]} intensity={1.7} distance={11} decay={2} color="#ea580c" />
+              <pointLight position={[0, -2.5, 2.5]} intensity={1.5} distance={10} decay={2} color="#ea580c" />
 
-          <LiquidChromeGeometry
-            isMobile={deviceInfo.isMobile}
-            isTouch={deviceInfo.isTouch}
-          />
+              <ConcentricOrbGeometry
+                isMobile={deviceInfo.isMobile}
+                isTouch={deviceInfo.isTouch}
+              />
 
-          <ContactShadows
-            position={[0, -2, 0]}
-            opacity={0.35}
-            scale={10}
-            blur={2}
-            far={4}
-            color="#000000"
-          />
-        </Canvas>
-        </CanvasErrorBoundary>
+              <ContactShadows
+                position={[0, -2, 0]}
+                opacity={0.3}
+                scale={9}
+                blur={2}
+                far={4}
+                color="#000000"
+              />
+            </Canvas>
+          </CanvasErrorBoundary>
+        </motion.div>
+
+        {/* Multi-spectrum Aurora Gradient Aura behind Meadows */}
+        <div
+          className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] max-w-[680px] h-[120px] sm:h-[160px] rounded-full opacity-60 mix-blend-screen blur-[50px]"
+          style={{
+            background: 'linear-gradient(90deg, rgba(56,189,248,0.35) 0%, rgba(14,165,233,0.25) 35%, rgba(251,191,36,0.3) 75%, rgba(234,88,12,0.2) 100%)',
+          }}
+          aria-hidden="true"
+        />
+
+        {/* Wordmark: Outfit 900, clamp(4rem, 10vw, 9.5rem), tracking -0.015em, line-height 1 */}
+        <h1
+          className="relative z-10 font-display font-black text-[clamp(4rem,10vw,9.5rem)] tracking-[-0.015em] leading-none text-center select-none"
+          style={{
+            background: 'linear-gradient(100deg, #ffffff 0%, #dff3ff 45%, #ffe9a8 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            filter: 'drop-shadow(0 6px 40px rgba(3,7,18,0.7))',
+          }}
+        >
+          Meadows
+        </h1>
       </div>
 
-      {/* Gentle ambient halo for 3D orb specular depth */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-1/2 z-[15] h-[55vh] sm:h-[64vh] w-[55vh] sm:w-[64vh] -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{
-          background: 'radial-gradient(circle, rgba(56,189,248,0.08) 0%, rgba(14,165,233,0.04) 40%, transparent 70%)',
-          filter: 'blur(50px)',
-        }}
-      />
-
-      {/* LAYER 2: typography */}
-      <motion.div
-        style={reduced ? undefined : { y: yText, opacity: opacityText }}
-        className="absolute inset-0 z-20 pointer-events-none px-4"
+      {/* ── TAGLINE (24px below wordmark group, fully OUTSIDE the orb) ── */}
+      <p
+        className="mt-6 text-[clamp(1.0625rem,1.3vw,1.3125rem)] font-normal text-fg/85 max-w-[34ch] text-center [text-wrap:balance] leading-[1.5] [text-shadow:0_2px_12px_rgba(3,7,18,0.9)] px-4 z-20"
       >
-        {/* Crown Badge Pill: Preserved at original upper position */}
-        <div className="absolute top-[10dvh] sm:top-[12dvh] md:top-[14vh] left-0 right-0 flex justify-center z-10">
-          <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-sky-400/30 bg-background/70 backdrop-blur-md text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.24em] text-sky-400 shadow-[0_0_24px_rgba(56,189,248,0.25)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping" />
-            Under the Stars & Aurora
-          </span>
-        </div>
-
-        {/* Hero Title & Subheadline: Centered directly across the 3D globe as drawn in the user's diagram */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pt-6 sm:pt-8 md:pt-10 z-10">
-          <div className="relative flex flex-col items-center justify-center">
-            {/* Multi-spectrum Aurora Gradient Aura directly behind Meadows */}
-            <div
-              className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[115%] max-w-[700px] h-[130px] sm:h-[180px] rounded-full opacity-70 mix-blend-screen blur-[45px] sm:blur-[60px]"
-              style={{
-                background: 'linear-gradient(90deg, rgba(56, 189, 248, 0.5) 0%, rgba(14, 165, 233, 0.35) 30%, rgba(251, 191, 36, 0.4) 75%, rgba(234, 88, 12, 0.25) 100%)',
-              }}
-              aria-hidden="true"
-            />
-
-            <h1 className="relative z-10 text-[clamp(3.2rem,11.5vw,10.5rem)] font-display font-black tracking-[-0.035em] leading-[0.88] text-center aurora-hero-title [filter:drop-shadow(0_4px_45px_rgba(3,7,18,0.95))_drop-shadow(-10px_4px_35px_rgba(56,189,248,0.45))_drop-shadow(10px_4px_35px_rgba(251,191,36,0.35))] select-none">
-              Meadows
-            </h1>
-          </div>
-
-          <p className="mt-3.5 sm:mt-5 text-xs sm:text-sm md:text-base font-medium text-slate-300 max-w-xs sm:max-w-md md:max-w-xl text-center tracking-wide leading-relaxed [text-shadow:0_2px_24px_rgba(3,7,18,0.95)] px-4">
-            Discover extraordinary campsites, secret clearings, and dark-sky sanctuaries.
-          </p>
-        </div>
-      </motion.div>
-
-      {/* Fade into the rest of the page */}
-      <div className="absolute bottom-0 w-full h-[20vh] sm:h-[24vh] bg-gradient-to-t from-background via-background/60 to-transparent z-30 pointer-events-none" />
-    </div>
+        Discover extraordinary campsites, secret clearings, and dark{'\u2011'}sky sanctuaries.
+      </p>
+    </motion.div>
   );
 }

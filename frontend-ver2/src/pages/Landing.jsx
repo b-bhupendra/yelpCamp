@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import AmbientAtmosphere from '../components/AmbientAtmosphere';
 import SleekMasterpieceHero from '../components/SleekMasterpieceHero';
 import CampHorizon from '../components/CampHorizon';
+import HeroDebugOverlay from '../components/HeroDebugOverlay';
 import CampsiteBento from '../components/CampsiteBento';
 import CamperStories from '../components/CamperStories';
 import ScrollReveal from '../components/ScrollReveal';
@@ -97,60 +98,74 @@ export default function Landing() {
       </div>
 
       {/* ═══════════════════════════════════════
-          SECTION 1 — HERO SECTION
-          Aurora sky + 3D Liquid Chrome Centerpiece + Campsite Horizon
+          SECTION 1 — HERO SECTION (ONE LAYOUT SOURCE OF TRUTH)
+          CSS Grid: [72px nav spacer] [1fr hero stack] [auto action band]
+          Concentric 3D celestial orb + Outlined ghost chips + 56px CTAs
           ═══════════════════════════════════════ */}
-      <section className="relative min-h-[100dvh] h-[100dvh] md:h-screen flex flex-col justify-end overflow-hidden pb-[6vh] sm:pb-[8vh] md:pb-[9vh]">
-        {/* Camp Horizon Silhouette with glowing tent and campfire */}
-        <div className="absolute inset-x-0 bottom-0 z-[5] h-[36%] sm:h-[38%] pointer-events-none" aria-hidden="true">
+      <section className="relative w-full h-[100svh] min-h-[640px] grid grid-rows-[72px_1fr_auto] overflow-hidden select-none">
+        {/* Dev-only ?debug overlay */}
+        <HeroDebugOverlay />
+
+        {/* Camp Horizon Silhouette with glowing tent, campfire, and misty grove */}
+        <div className="absolute inset-x-0 bottom-0 z-[5] h-[34%] pointer-events-none" aria-hidden="true">
           <CampHorizon />
         </div>
 
-        {/* 3D Liquid-Chrome Centerpiece illuminated by the Aurora */}
-        <div className="absolute inset-0 z-10">
+        {/* ── ROW 1: Nav spacer (0 to 9vh) ── */}
+        <div className="h-[72px] w-full pointer-events-none" aria-hidden="true" />
+
+        {/* ── ROW 2: Hero stack (Eyebrow, Wordmark + Concentric Orb, Tagline) ── */}
+        <div className="relative z-20 flex flex-col items-center justify-center w-full px-4 min-h-0">
           <SleekMasterpieceHero />
         </div>
 
-        {/* Hero Quick Tags & Magnetic CTA Button */}
-        <div className="relative z-50 flex flex-col items-center gap-3.5 sm:gap-5 px-4 sm:px-6">
-          <ScrollReveal priority={true} variant="fade-up" delay={150} duration={700}>
-            <ul className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2.5 max-w-xs sm:max-w-xl md:max-w-3xl">
-              {HERO_FEATURES.map((f) => (
-                <li key={f.label}>
-                  <span className="group/pill inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-sky-400/25 bg-background/80 hover:bg-surface-2/90 backdrop-blur-xl px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold text-slate-300 shadow-[0_4px_20px_rgba(3,7,18,0.5)] hover:border-sky-400/60 hover:text-white hover:scale-[1.04] transition-all duration-200">
-                    <f.Icon size={13} className={`${f.iconColor} shrink-0 transition-transform duration-200 group-hover/pill:scale-110`} />
-                    {f.label}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </ScrollReveal>
+        {/* ── ROW 3: Action band (Normal flow below stack: Chips + CTAs, pb >= 8vh) ── */}
+        <div className="relative z-20 pb-[8vh] flex flex-col items-center w-full px-4 pointer-events-auto">
+          {/* Campsite telemetry chips: ghost style, 13px, 500, desktop single row nowrap */}
+          <div className="w-full flex justify-center">
+            <ScrollReveal priority={true} variant="fade-up" delay={150} duration={600}>
+              <ul className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-2 sm:gap-2.5 max-w-xs sm:max-w-4xl opacity-70 hover:opacity-100 transition-opacity duration-200">
+                {HERO_FEATURES.map((f) => (
+                  <li key={f.label} className="shrink-0">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-background/40 hover:bg-surface-2/60 px-3.5 py-1.5 text-[13px] font-medium text-slate-300 hover:text-white transition-all duration-200">
+                      <f.Icon size={14} className={`${f.iconColor} shrink-0`} />
+                      {f.label}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </ScrollReveal>
+          </div>
 
-          <ScrollReveal priority={true} variant="fade-scale" delay={280} duration={800}>
-            <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full sm:w-auto px-2 sm:px-0">
-              <Magnetic strength={0.25}>
-                <Link
-                  to="/campgrounds"
-                  className="group relative cursor-pointer w-full sm:w-auto inline-flex items-center justify-center px-8 sm:px-12 py-3.5 sm:py-5 min-h-[48px] rounded-full font-extrabold text-xs uppercase tracking-[0.2em] sm:tracking-[0.24em] bg-gradient-to-r from-sky-400 via-sky-300 to-amber-300 hover:from-sky-300 hover:via-amber-200 hover:to-amber-400 text-slate-950 overflow-hidden transition-all duration-300 hover:scale-[1.04] active:scale-95 shadow-[0_0_35px_rgba(14,165,233,0.35)] hover:shadow-[0_0_55px_rgba(251,191,36,0.45)]"
-                >
-                  <span className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                  <span className="relative inline-flex items-center gap-2.5">
-                    Explore campsites
-                    <Icon.ArrowRight size={16} className="transition-transform duration-200 group-hover:translate-x-1" />
-                  </span>
-                </Link>
-              </Magnetic>
+          {/* Magnetic CTA Buttons: 32px below chips (mt-8), equal height 56px (h-14) */}
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto">
+            <ScrollReveal priority={true} variant="fade-scale" delay={260} duration={700}>
+              <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+                {/* Primary CTA: Solid sky-to-cyan pill (the ONLY saturated element below wordmark) */}
+                <Magnetic strength={0.25}>
+                  <Link
+                    to="/campgrounds"
+                    className="group relative cursor-pointer w-full sm:w-auto inline-flex items-center justify-center px-10 h-14 rounded-full font-semibold text-[14px] uppercase tracking-[0.14em] bg-gradient-to-r from-sky-400 via-sky-300 to-cyan-400 hover:from-sky-300 hover:to-cyan-300 text-slate-950 transition-all duration-300 hover:scale-[1.03] active:scale-95 shadow-[0_0_30px_rgba(14,165,233,0.35)] hover:shadow-[0_0_45px_rgba(14,165,233,0.5)]"
+                  >
+                    <span className="relative inline-flex items-center gap-2.5">
+                      Explore campsites
+                      <Icon.ArrowRight size={16} className="transition-transform duration-200 group-hover:translate-x-1" />
+                    </span>
+                  </Link>
+                </Magnetic>
 
-              <Magnetic strength={0.15}>
-                <Link
-                  to="/register"
-                  className="w-full sm:w-auto inline-flex cursor-pointer items-center justify-center gap-2 px-6 sm:px-8 py-3.5 sm:py-5 min-h-[48px] rounded-full border border-border-strong hover:border-secondary text-xs font-bold uppercase tracking-[0.18em] sm:tracking-[0.2em] text-fg transition-all duration-300 hover:bg-surface/60 backdrop-blur-md active:scale-95"
-                >
-                  Join Community
-                </Link>
-              </Magnetic>
-            </div>
-          </ScrollReveal>
+                {/* Secondary CTA: Ghost pill */}
+                <Magnetic strength={0.15}>
+                  <Link
+                    to="/register"
+                    className="w-full sm:w-auto inline-flex cursor-pointer items-center justify-center px-10 h-14 rounded-full border border-border-strong hover:border-sky-400/40 bg-transparent hover:bg-surface/60 text-[14px] font-semibold uppercase tracking-[0.14em] text-fg transition-all duration-300 hover:scale-[1.03] active:scale-95"
+                  >
+                    Join Community
+                  </Link>
+                </Magnetic>
+              </div>
+            </ScrollReveal>
+          </div>
         </div>
       </section>
 

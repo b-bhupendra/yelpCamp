@@ -132,17 +132,18 @@ export default function CampHorizon({ className = '' }) {
         <rect x="0" y="160" width="1440" height="180" fill="url(#ch-mist-1)" />
         <rect x="0" y="240" width="1440" height="160" fill="url(#ch-mist-2)" />
 
-        {/* ── Pine Treeline (Left & Center Ridge) ── */}
+        {/* ── Left Balanced Tree Cluster & Misty Grove (Counterbalance to right campsite) ── */}
+        <ellipse cx="240" cy="280" rx="260" ry="90" fill="#10b981" fillOpacity="0.04" />
         <g>
-          <Pine x={60} y={242} h={65} fill="#02060c" />
-          <Pine x={120} y={235} h={75} fill="#02060d" />
-          <Pine x={180} y={250} h={58} fill="#02050b" />
-          <Pine x={250} y={228} h={82} fill="#02060c" />
-          <Pine x={315} y={245} h={64} fill="#02060d" />
-          <Pine x={390} y={232} h={78} fill="#02050b" />
-          <Pine x={470} y={248} h={60} fill="#02060c" />
-          <Pine x={530} y={238} h={72} fill="#02060d" />
-          <Pine x={610} y={252} h={55} fill="#02050b" />
+          <Pine x={40} y={225} h={88} fill="#02060c" />
+          <Pine x={95} y={218} h={96} fill="#02060d" />
+          <Pine x={155} y={232} h={80} fill="#02050b" />
+          <Pine x={215} y={215} h={100} fill="#02060c" />
+          <Pine x={275} y={230} h={86} fill="#02060d" />
+          <Pine x={335} y={222} h={92} fill="#02050b" />
+          <Pine x={395} y={238} h={74} fill="#02060c" />
+          <Pine x={455} y={248} h={64} fill="#02060d" />
+          <Pine x={520} y={255} h={54} fill="#02050b" />
         </g>
 
         {/* ── Right Treeline (Campsite Sanctuary) ── */}
@@ -161,9 +162,9 @@ export default function CampHorizon({ className = '' }) {
           fill="#02050a"
         />
 
-        {/* ── RESPONSIVE CAMPSITE HEARTH & TENT VIGNETTE ── */}
-        {/* Mobile: Centered at x: 635, directly visible in mobile portrait aspect slice */}
-        <CampsiteVignette className="sm:hidden" transform="translate(635, 246) scale(0.92)" />
+        {/* ── RESPONSIVE CAMPSITE HEARTH & TENT VIGNETTE (Kept out of central text/action column) ── */}
+        {/* Mobile: Offset to the right shoulder to remain clear of buttons */}
+        <CampsiteVignette className="sm:hidden" transform="translate(735, 252) scale(0.85)" />
 
         {/* Tablet: Right-center balanced position at x: 920 */}
         <CampsiteVignette className="hidden sm:block lg:hidden" transform="translate(920, 242)" />
