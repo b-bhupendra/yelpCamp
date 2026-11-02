@@ -86,3 +86,4 @@ def upload_visitor_photo(file_data, public_id: str = None) -> str:
 
     result = cloudinary.uploader.upload(file_data, **options)
     return result.get("secure_url")
+

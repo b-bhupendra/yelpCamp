@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 from app.models.user import User
 
 def test_list_campgrounds(client: TestClient):
-    response = client.get("/api/campgrounds")
+    response = client.get("/api/v1/campgrounds")
     assert response.status_code == 200
     data = response.json()
     assert "campgrounds" in data
@@ -24,7 +24,7 @@ def test_create_campground_authenticated(client: TestClient, auth_headers: dict,
         "amenities": ["campfire", "potable_water", "tent_pitches"],
         "tags": ["mountain", "forest", "peaceful"]
     }
-    response = client.post("/api/campgrounds", json=camp_payload, headers=auth_headers)
+    response = client.post("/api/v1/campgrounds", json=camp_payload, headers=auth_headers)
     assert response.status_code == 201
     created = response.json()
     assert created["title"] == "Emerald Ridge Pine Haven"
@@ -34,7 +34,7 @@ def test_create_campground_authenticated(client: TestClient, auth_headers: dict,
     assert "id" in created
 
     # Verify retrieval
-    get_res = client.get(f"/api/campgrounds/{created['id']}")
+    get_res = client.get(f"/api/v1/campgrounds/{created['id']}")
     assert get_res.status_code == 200
     retrieved = get_res.json()
     assert retrieved["id"] == created["id"]
@@ -47,13 +47,13 @@ def test_create_campground_unauthenticated(client: TestClient):
         "description": "This should fail authentication.",
         "location": "Nowhere"
     }
-    response = client.post("/api/campgrounds", json=camp_payload)
+    response = client.post("/api/v1/campgrounds", json=camp_payload)
     assert response.status_code == 401
 
 def test_update_and_delete_campground(client: TestClient, auth_headers: dict):
     # 1. Create campsite
     create_res = client.post(
-        "/api/campgrounds",
+        "/api/v1/campgrounds",
         json={
             "title": "Temporary Meadow Camp",
             "price": 25.0,
@@ -67,7 +67,7 @@ def test_update_and_delete_campground(client: TestClient, auth_headers: dict):
 
     # 2. Update campsite
     update_res = client.put(
-        f"/api/campgrounds/{camp_id}",
+        f"/api/v1/campgrounds/{camp_id}",
         json={"title": "Updated Meadow Camp", "price": 32.0},
         headers=auth_headers
     )
@@ -76,10 +76,10 @@ def test_update_and_delete_campground(client: TestClient, auth_headers: dict):
     assert update_res.json()["price"] == 32.0
 
     # 3. Delete campsite
-    delete_res = client.delete(f"/api/campgrounds/{camp_id}", headers=auth_headers)
+    delete_res = client.delete(f"/api/v1/campgrounds/{camp_id}", headers=auth_headers)
     assert delete_res.status_code == 200
     assert delete_res.json()["id"] == camp_id
 
     # 4. Verify 404
-    verify_res = client.get(f"/api/campgrounds/{camp_id}")
+    verify_res = client.get(f"/api/v1/campgrounds/{camp_id}")
     assert verify_res.status_code == 404

@@ -81,8 +81,8 @@ export default function CampgroundDetails() {
   const fetchCampground = useCallback(async () => {
     try {
       const [res, statsRes] = await Promise.all([
-        api.get(`/api/campgrounds/${id}`),
-        api.get(`/api/campgrounds/${id}/stats`).catch(() => null),
+        api.get(`/api/v1/campgrounds/${id}`),
+        api.get(`/api/v1/campgrounds/${id}/stats`).catch(() => null),
       ]);
       setCampground(res.data);
       if (res.data.is_wishlisted !== undefined) {
@@ -217,7 +217,7 @@ export default function CampgroundDetails() {
       return navigate('/login');
     }
     try {
-      await api.post(`/api/campgrounds/${id}/comments`, {
+      await api.post(`/api/v1/campgrounds/${id}/comments`, {
         text,
         rating,
         parent_comment_id: parentCommentId,
@@ -233,7 +233,7 @@ export default function CampgroundDetails() {
   const handleDelete = async () => {
     if (!window.confirm('Delete this campsite? This cannot be undone.')) return;
     try {
-      await api.delete(`/api/campgrounds/${id}`);
+      await api.delete(`/api/v1/campgrounds/${id}`);
       toast.success('Campsite deleted successfully.');
       navigate('/campgrounds');
     } catch (err) {

@@ -64,3 +64,4 @@ def verify_google_token(token: str) -> Dict[str, Any]:
         "picture": data.get("picture"),
         "email_verified": data.get("email_verified") in [True, "true", "True"]
     }
+

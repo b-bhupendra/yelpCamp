@@ -35,7 +35,7 @@ backend/
 ├── api/                            # Vercel Serverless Function entrypoint
 │   └── index.py                    # Imports app from app.main
 ├── app/                            # Primary application package
-│   ├── main.py                     # FastAPI app factory, lifespan, CORS, route dual-mounting
+│   ├── main.py                     # FastAPI app factory, lifespan, CORS, /api/v1 routing
 │   ├── api/                        # API Routing & Controllers
 │   │   ├── deps.py                 # Dependencies (get_db, get_current_user, is_logged_in)
 │   │   └── v1/
@@ -90,7 +90,7 @@ backend/
     ├── test_campgrounds.py         # Pagination, creation, updates, deletes
     ├── test_comments.py            # Comments, threaded replies, SQLite rating recalculation triggers
     ├── test_stories.py             # Story tray, moments, like toggling
-    └── test_api_integration.py     # End-to-end user lifecycle & dual-mount verification
+    └── test_api_integration.py     # End-to-end user lifecycle & v1 endpoint verification
 ```
 
 ---

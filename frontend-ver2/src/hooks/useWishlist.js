@@ -22,7 +22,7 @@ export function useWishlist({ campgroundId, initialWishlisted = false } = {}) {
     setLoading(true);
 
     try {
-      const res = await api.post(`/api/campgrounds/${targetId}/wishlist`);
+      const res = await api.post(`/api/v1/campgrounds/${targetId}/wishlist`);
       const newStatus = res.data.is_wishlisted;
       setIsWishlisted(newStatus);
       if (newStatus) {

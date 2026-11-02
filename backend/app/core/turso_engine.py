@@ -332,3 +332,4 @@ def seed_ui_navigation():
                 """, [act_id, name, route, sel, desc])
             except Exception as e:
                 logger.debug(f"UI nav Turso seed notice: {e}")
+

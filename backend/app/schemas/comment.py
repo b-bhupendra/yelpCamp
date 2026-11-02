@@ -23,3 +23,4 @@ class CommentOut(CommentBase):
         if self.author_username:
             self.author_avatar = get_user_avatar_url(self.author_username, self.author_avatar)
         return self
+

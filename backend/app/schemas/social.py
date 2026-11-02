@@ -32,3 +32,4 @@ class TripOut(TripBase):
     id: int
     owner_id: int
     member_ids: List[int] = []
+

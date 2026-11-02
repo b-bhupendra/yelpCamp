@@ -103,3 +103,4 @@ def logout(response: Response):
         secure=is_prod
     )
     return {"message": "Logged you out successfully"}
+

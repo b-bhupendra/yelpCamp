@@ -58,3 +58,4 @@ class TripMember(SQLModel, table=True):
     )
 
     trip: Optional[Trip] = Relationship(back_populates="members")
+

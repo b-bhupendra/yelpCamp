@@ -50,3 +50,4 @@ def delete_comment(
 ):
     """Delete a comment (author-only)."""
     return comment_service.delete_comment(db, comment)
+

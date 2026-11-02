@@ -75,7 +75,7 @@ export function AgentProvider({ children }) {
         const currentHash = String(hash);
 
         if (cachedHash !== currentHash) {
-          await api.post('/api/agent/sync-ui', { items: UI_CAPABILITY_MANIFEST });
+          await api.post('/api/v1/agent/sync-ui', { items: UI_CAPABILITY_MANIFEST });
           localStorage.setItem('yelpcamp_ui_manifest_hash', currentHash);
           console.info('[Agent Manifest] Auto-synced UI capabilities to Vector DB.');
         }

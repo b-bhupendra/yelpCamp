@@ -161,3 +161,4 @@ def sanitize_gallery_images(gallery: Any, campground_id: Optional[int] = None) -
                 clean_list.append(img)
 
     return clean_list[:6]
+

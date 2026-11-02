@@ -12,3 +12,4 @@ class UINavigationBase(SQLModel):
 class UINavigation(UINavigationBase, table=True):
     __tablename__ = "ui_navigation"
     embedding: Optional[str] = Field(default=None)
+

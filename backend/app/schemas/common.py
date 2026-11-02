@@ -15,3 +15,4 @@ class PaginatedResponse(SQLModel, Generic[T]):
 class FileUploadResponse(SQLModel):
     url: str
     filename: str
+

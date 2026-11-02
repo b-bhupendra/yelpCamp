@@ -38,3 +38,4 @@ class Comment(CommentBase, table=True):
     author: Optional["User"] = Relationship(back_populates="comments")
     campground: Optional["Campground"] = Relationship(back_populates="comments")
     visitor_photo: Optional["VisitorPhoto"] = Relationship(back_populates="comments")
+

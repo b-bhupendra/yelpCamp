@@ -136,3 +136,4 @@ class StoryService:
         return story_repo.toggle_like(session, photo_id, user_id)
 
 story_service = StoryService()
+

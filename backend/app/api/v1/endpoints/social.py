@@ -152,3 +152,4 @@ def add_trip_member(
         owner_id=updated_trip.owner_id,
         member_ids=[m.user_id for m in updated_trip.members]
     )
+

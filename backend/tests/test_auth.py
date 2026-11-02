@@ -5,7 +5,7 @@ from app.models.user import User
 def test_register_success(client: TestClient):
     unique_user = f"scout_{uuid.uuid4().hex[:8]}"
     response = client.post(
-        "/api/register",
+        "/api/v1/register",
         json={"username": unique_user, "password": "SecurePassword123!"}
     )
     assert response.status_code == 200
@@ -17,17 +17,17 @@ def test_register_success(client: TestClient):
 
 def test_register_duplicate_username(client: TestClient):
     unique_user = f"scout_{uuid.uuid4().hex[:8]}"
-    client.post("/api/register", json={"username": unique_user, "password": "Password123!"})
-    dup_res = client.post("/api/register", json={"username": unique_user, "password": "Password123!"})
+    client.post("/api/v1/register", json={"username": unique_user, "password": "Password123!"})
+    dup_res = client.post("/api/v1/register", json={"username": unique_user, "password": "Password123!"})
     assert dup_res.status_code == 400
     assert "already exists" in dup_res.json()["detail"].lower()
 
 def test_login_success(client: TestClient):
     unique_user = f"scout_{uuid.uuid4().hex[:8]}"
     password = "MyPassword456!"
-    client.post("/api/register", json={"username": unique_user, "password": password})
+    client.post("/api/v1/register", json={"username": unique_user, "password": password})
 
-    login_res = client.post("/api/login", json={"username": unique_user, "password": password})
+    login_res = client.post("/api/v1/login", json={"username": unique_user, "password": password})
     assert login_res.status_code == 200
     data = login_res.json()
     assert "access_token" in data
@@ -35,19 +35,19 @@ def test_login_success(client: TestClient):
 
 def test_login_invalid_password(client: TestClient):
     unique_user = f"scout_{uuid.uuid4().hex[:8]}"
-    client.post("/api/register", json={"username": unique_user, "password": "CorrectPassword!"})
+    client.post("/api/v1/register", json={"username": unique_user, "password": "CorrectPassword!"})
 
-    bad_login = client.post("/api/login", json={"username": unique_user, "password": "WrongPassword!"})
+    bad_login = client.post("/api/v1/login", json={"username": unique_user, "password": "WrongPassword!"})
     assert bad_login.status_code == 401
     assert "invalid" in bad_login.json()["detail"].lower()
 
 def test_get_me_authenticated(client: TestClient, auth_headers: dict, test_user: User):
-    res = client.get("/api/me", headers=auth_headers)
+    res = client.get("/api/v1/me", headers=auth_headers)
     assert res.status_code == 200
     data = res.json()
     assert data["user"]["id"] == test_user.id
     assert data["user"]["username"] == test_user.username
 
 def test_get_me_unauthenticated(client: TestClient):
-    res = client.get("/api/me")
+    res = client.get("/api/v1/me")
     assert res.status_code == 401

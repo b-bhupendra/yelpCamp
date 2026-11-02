@@ -628,3 +628,4 @@ class VectorStoreService:
         return results
 
 vector_store = VectorStoreService()
+

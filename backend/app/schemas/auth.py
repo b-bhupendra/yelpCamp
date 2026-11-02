@@ -33,3 +33,4 @@ class AvatarUpdateResponse(SQLModel):
     message: str = "Avatar updated successfully"
     avatar_url: str
     user: UserOut
+

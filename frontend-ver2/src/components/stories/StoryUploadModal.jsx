@@ -33,7 +33,7 @@ export default function StoryUploadModal({
   // Fetch campsites list if opened globally without pre-selected campground
   useEffect(() => {
     if (isOpen && !campgroundId) {
-      api.get('/api/campgrounds')
+      api.get('/api/v1/campgrounds')
         .then((res) => {
           const camps = res.data.items || res.data.campgrounds || (Array.isArray(res.data) ? res.data : []);
           setCampgrounds(camps);
@@ -111,7 +111,7 @@ export default function StoryUploadModal({
     // Note: Per user directive, expires_hours is omitted so expires_at = None (permanent until user deletes)
 
     try {
-      const res = await api.post(`/api/campgrounds/${targetCampId}/stories`, formData, {
+      const res = await api.post(`/api/v1/campgrounds/${targetCampId}/stories`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 

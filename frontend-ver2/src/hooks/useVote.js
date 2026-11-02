@@ -47,7 +47,7 @@ export function useVote({ campgroundId, initialLikes = 0, initialDislikes = 0, i
 
     setLoading(true);
     try {
-      const res = await api.post(`/api/campgrounds/${campgroundId}/vote?vote_type=${type}`, {});
+      const res = await api.post(`/api/v1/campgrounds/${campgroundId}/vote?vote_type=${type}`, {});
       setLikes(res.data.likes);
       setDislikes(res.data.dislikes);
       setUserVote(res.data.user_vote);

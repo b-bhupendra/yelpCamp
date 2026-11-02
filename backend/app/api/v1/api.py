@@ -17,3 +17,4 @@ api_router.include_router(social.router, tags=["Social"])
 api_router.include_router(visitor_photos.router, tags=["Stories"])
 api_router.include_router(vector_rag.router, tags=["Vector & RAG"])
 api_router.include_router(vector_rag.agent_router, tags=["AI Agent"])
+

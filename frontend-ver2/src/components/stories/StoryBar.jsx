@@ -43,7 +43,7 @@ export default function StoryBar({
     try {
       if (campgroundId) {
         // Fetch stories for specific campground
-        const res = await api.get(`/api/campgrounds/${campgroundId}/stories`);
+        const res = await api.get(`/api/v1/campgrounds/${campgroundId}/stories`);
         const photos = Array.isArray(res.data) ? res.data : (res.data.photos || []);
 
         // Group photos by user_id
@@ -65,7 +65,7 @@ export default function StoryBar({
         setStoryGroups(groups);
       } else {
         // Global community story tray
-        const res = await api.get('/api/stories');
+        const res = await api.get('/api/v1/stories');
         const rawList = Array.isArray(res.data) ? res.data : (res.data.stories || []);
         const normalized = rawList.map((g) => ({
           user_id: g.user_id,

@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      const response = await api.get('/api/me');
+      const response = await api.get('/api/v1/me');
       if (response.data.user) {
         setUser(response.data.user);
         localStorage.setItem('yelpcamp_user', JSON.stringify(response.data.user));
@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (username, password) => {
-    const response = await api.post('/api/login', { username, password });
+    const response = await api.post('/api/v1/login', { username, password });
     const data = response.data;
     if (data.access_token) {
       localStorage.setItem('yelpcamp_token', data.access_token);
@@ -88,7 +88,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (username, password) => {
-    const response = await api.post('/api/register', { username, password });
+    const response = await api.post('/api/v1/register', { username, password });
     const data = response.data;
     if (data.access_token) {
       localStorage.setItem('yelpcamp_token', data.access_token);
@@ -99,7 +99,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const loginWithGoogle = async (credential) => {
-    const response = await api.post('/api/auth/google', { token: credential });
+    const response = await api.post('/api/v1/auth/google', { token: credential });
     const data = response.data;
     if (data.access_token) {
       localStorage.setItem('yelpcamp_token', data.access_token);
@@ -111,7 +111,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await api.post('/api/logout');
+      await api.post('/api/v1/logout');
     } catch (e) {
       console.warn('Logout notice:', e);
     }

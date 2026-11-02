@@ -136,3 +136,4 @@ def create_photo_comment(
 ):
     """Post a comment or threaded reply on a visitor story."""
     return comment_service.create_photo_comment(db, photo_id, current_user, comment_data)
+

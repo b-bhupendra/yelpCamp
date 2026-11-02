@@ -26,12 +26,12 @@ export default function Dashboard() {
 
   const fetchMyMoments = async () => {
     try {
-      const res = await api.get('/api/me/moments');
+      const res = await api.get('/api/v1/me/moments');
       setMyMoments(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error('Failed to load my moments from /api/me/moments, trying fallback:', err);
+      console.error('Failed to load my moments from /api/v1/me/moments, trying fallback:', err);
       try {
-        const fallbackRes = await api.get('/api/stories');
+        const fallbackRes = await api.get('/api/v1/stories');
         const allStories = Array.isArray(fallbackRes.data) ? fallbackRes.data : (fallbackRes.data.stories || []);
         const userStory = allStories.find(
           (s) => s.user_id === user?.id || s.username === user?.username || s.user_username === user?.username
@@ -46,7 +46,7 @@ export default function Dashboard() {
   const handleDeleteMoment = async (photoId) => {
     if (!window.confirm('Are you sure you want to delete this moment?')) return;
     try {
-      await api.delete(`/api/stories/${photoId}`);
+      await api.delete(`/api/v1/stories/${photoId}`);
       setMyMoments((prev) => prev.filter((m) => m.id !== photoId));
       toast.success('Field moment deleted.');
     } catch (err) {
@@ -58,7 +58,7 @@ export default function Dashboard() {
   const handleDeleteCampground = async (campId) => {
     if (!window.confirm('Delete this campsite listing? This cannot be undone.')) return;
     try {
-      await api.delete(`/api/campgrounds/${campId}`);
+      await api.delete(`/api/v1/campgrounds/${campId}`);
       setMyCampgrounds((prev) => prev.filter((c) => c.id !== campId));
       setStats((prev) => ({ ...prev, total_posts: Math.max(0, prev.total_posts - 1) }));
       toast.success('Campsite listing removed.');
@@ -76,7 +76,7 @@ export default function Dashboard() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await api.post('/api/me/avatar', formData, {
+      const res = await api.post('/api/v1/me/avatar', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       if (res.data.avatar_url) {
@@ -95,7 +95,7 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const res = await api.get('/api/me/dashboard');
+        const res = await api.get('/api/v1/me/dashboard');
         setStats({
           total_posts: res.data.total_posts,
           total_likes: res.data.total_likes,

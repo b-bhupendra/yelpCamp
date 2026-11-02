@@ -322,3 +322,4 @@ class MultimodalEmbedder:
 multimodal_embedder = MultimodalEmbedder()
 process_campground_ingestion = multimodal_embedder.process_campground_ingestion
 process_story_ingestion = multimodal_embedder.process_story_ingestion
+

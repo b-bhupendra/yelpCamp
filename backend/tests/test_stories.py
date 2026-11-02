@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 def test_create_story_and_tray(client: TestClient, auth_headers: dict):
     # 1. Create campsite
     camp_res = client.post(
-        "/api/campgrounds",
+        "/api/v1/campgrounds",
         json={
             "title": "Sunburst Canyon",
             "price": 28.0,
@@ -22,7 +22,7 @@ def test_create_story_and_tray(client: TestClient, auth_headers: dict):
         "expires_hours": 24
     }
     story_res = client.post(
-        f"/api/campgrounds/{camp_id}/stories",
+        f"/api/v1/campgrounds/{camp_id}/stories",
         json=story_payload,
         headers=auth_headers
     )
@@ -33,14 +33,14 @@ def test_create_story_and_tray(client: TestClient, auth_headers: dict):
     photo_id = story_data["id"]
 
     # 3. Check active stories tray
-    tray_res = client.get("/api/stories")
+    tray_res = client.get("/api/v1/stories")
     assert tray_res.status_code == 200
     tray = tray_res.json()
     assert isinstance(tray, list)
     assert len(tray) >= 1
 
     # 4. Check user moments
-    moments_res = client.get("/api/me/moments", headers=auth_headers)
+    moments_res = client.get("/api/v1/me/moments", headers=auth_headers)
     assert moments_res.status_code == 200
     moments = moments_res.json()
     assert any(m["id"] == photo_id for m in moments)
@@ -48,7 +48,7 @@ def test_create_story_and_tray(client: TestClient, auth_headers: dict):
 def test_story_like_toggle(client: TestClient, auth_headers: dict):
     # 1. Create campsite and story
     camp_res = client.post(
-        "/api/campgrounds",
+        "/api/v1/campgrounds",
         json={
             "title": "Glacier Creek Basin",
             "price": 35.0,
@@ -60,21 +60,21 @@ def test_story_like_toggle(client: TestClient, auth_headers: dict):
     camp_id = camp_res.json()["id"]
 
     story_res = client.post(
-        f"/api/campgrounds/{camp_id}/stories",
+        f"/api/v1/campgrounds/{camp_id}/stories",
         json={"image_url": "https://images.unsplash.com/photo-glacier.jpg", "caption": "Morning dew"},
         headers=auth_headers
     )
     photo_id = story_res.json()["id"]
 
     # 2. Like story
-    like_res = client.post(f"/api/stories/{photo_id}/like", headers=auth_headers)
+    like_res = client.post(f"/api/v1/stories/{photo_id}/like", headers=auth_headers)
     assert like_res.status_code == 200
     like_data = like_res.json()
     assert like_data["liked_by_me"] is True
     assert like_data["likes_count"] >= 1
 
     # 3. Unlike story (toggle)
-    unlike_res = client.post(f"/api/stories/{photo_id}/like", headers=auth_headers)
+    unlike_res = client.post(f"/api/v1/stories/{photo_id}/like", headers=auth_headers)
     assert unlike_res.status_code == 200
     unlike_data = unlike_res.json()
     assert unlike_data["liked_by_me"] is False

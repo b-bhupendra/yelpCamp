@@ -231,3 +231,4 @@ def trigger_bulk_indexing(request: Request, session: Session = Depends(get_db)):
 
     vector_store.invalidate_cache()
     return {"message": f"Successfully indexed {indexed_count} campgrounds with {multimodal_embedder.dimension}-dim vectors."}
+

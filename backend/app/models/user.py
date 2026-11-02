@@ -22,3 +22,4 @@ class User(UserBase, table=True):
     wishlists: List["Wishlist"] = Relationship(back_populates="user", cascade_delete=True)
     check_ins: List["CheckIn"] = Relationship(back_populates="user", cascade_delete=True)
     managed_trips: List["Trip"] = Relationship(back_populates="owner", cascade_delete=True)
+

@@ -180,7 +180,7 @@ export default function AIAssistantDock() {
     setSearchLoading(true);
     setHasSearched(true);
     try {
-      const res = await api.post('/api/rag/search', {
+      const res = await api.post('/api/v1/rag/search', {
         query: q.trim(),
         limit: 8,
         min_score: 0.2

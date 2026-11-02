@@ -53,7 +53,7 @@ export default function EditCampground() {
   useEffect(() => {
     const fetchCampground = async () => {
       try {
-        const res = await api.get(`/api/campgrounds/${id}`);
+        const res = await api.get(`/api/v1/campgrounds/${id}`);
         const data = res.data;
         const incomingRules = typeof data.rules === 'object' && data.rules !== null ? data.rules : {};
         setFormData({
@@ -135,7 +135,7 @@ export default function EditCampground() {
         rules: formData.rules,
       };
 
-      await api.put(`/api/campgrounds/${id}`, payload);
+      await api.put(`/api/v1/campgrounds/${id}`, payload);
       toast.success('Campsite details updated successfully.');
       navigate(`/campgrounds/${id}`);
     } catch (err) {

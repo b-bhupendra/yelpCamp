@@ -75,8 +75,7 @@ if os.path.exists(upload_dir):
 async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
-# Dual-mount canonical REST routers: /api for current frontend, /api/v1 for future versioned clients
-app.include_router(api_router, prefix="/api")
+# Canonical REST API v1 router
 app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/")
@@ -87,3 +86,4 @@ async def root():
         "status": "healthy",
         "docs": "/docs"
     }
+

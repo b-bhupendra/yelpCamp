@@ -110,7 +110,7 @@ export default function NewCampground() {
         rules: rules,
       };
 
-      const res = await api.post('/api/campgrounds', payload);
+      const res = await api.post('/api/v1/campgrounds', payload);
       toast.success('Wilderness sanctuary published!');
       const createdId = res.data?.id;
       if (createdId) {

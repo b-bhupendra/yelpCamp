@@ -50,9 +50,9 @@ api.interceptors.response.use(
       const url = error.config?.url || '';
       // Don't treat failed login/register attempts as session expirations
       const isAuthEndpoint =
-        url.includes('/api/login') ||
-        url.includes('/api/register') ||
-        url.includes('/api/auth/google');
+        url.includes('/api/v1/login') ||
+        url.includes('/api/v1/register') ||
+        url.includes('/api/v1/auth/google');
 
       if (!isAuthEndpoint) {
         const hadToken = !!localStorage.getItem('yelpcamp_token');

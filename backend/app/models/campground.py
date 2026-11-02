@@ -89,3 +89,4 @@ class CampgroundEmbedding(SQLModel, table=True):
     has_image_embedding: bool = Field(default=False)
     has_video_embedding: bool = Field(default=False)
     updated_at: str = Field(default="")
+

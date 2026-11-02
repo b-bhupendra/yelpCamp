@@ -84,7 +84,7 @@ export default function StoryViewerModal({
     if (!currentPhoto?.id) return;
     setCommentsLoading(true);
     try {
-      const res = await api.get(`/api/stories/${currentPhoto.id}/comments`);
+      const res = await api.get(`/api/v1/stories/${currentPhoto.id}/comments`);
       const commentList = Array.isArray(res.data) ? res.data : (res.data.comments || []);
       setComments(commentList);
     } catch (err) {
@@ -194,7 +194,7 @@ export default function StoryViewerModal({
     }));
 
     try {
-      const res = await api.post(`/api/stories/${currentPhoto.id}/like`);
+      const res = await api.post(`/api/v1/stories/${currentPhoto.id}/like`);
       setLikeState({
         liked: res.data.liked,
         count: res.data.likes_count,
@@ -209,7 +209,7 @@ export default function StoryViewerModal({
   const handleStoryCommentSubmit = async ({ text, parentCommentId }) => {
     if (!currentPhoto?.id) return;
     try {
-      await api.post(`/api/stories/${currentPhoto.id}/comments`, {
+      await api.post(`/api/v1/stories/${currentPhoto.id}/comments`, {
         text,
         parent_comment_id: parentCommentId,
       });
@@ -226,7 +226,7 @@ export default function StoryViewerModal({
     if (!currentPhoto?.id) return;
     if (!window.confirm('Delete this visitor moment permanently?')) return;
     try {
-      await api.delete(`/api/stories/${currentPhoto.id}`);
+      await api.delete(`/api/v1/stories/${currentPhoto.id}`);
       toast.success('Field moment deleted.');
       if (onStoryDeleted) onStoryDeleted(currentPhoto.id);
       goToNext();

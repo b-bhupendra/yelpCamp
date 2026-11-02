@@ -31,7 +31,7 @@ export function useCampgrounds({ initialSearch = '', debounceMs = 300 } = {}) {
     setError(null);
 
     try {
-      const res = await api.get('/api/campgrounds', {
+      const res = await api.get('/api/v1/campgrounds', {
         params: {
           search: searchQuery || undefined,
           page: pageNum,

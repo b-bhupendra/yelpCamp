@@ -365,3 +365,4 @@ class StoryRepository:
         )
 
 story_repo = StoryRepository()
+

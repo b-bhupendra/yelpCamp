@@ -42,3 +42,4 @@ class VisitorPhotoLike(SQLModel, table=True):
     )
 
     photo: Optional[VisitorPhoto] = Relationship(back_populates="likes")
+

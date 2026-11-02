@@ -64,7 +64,7 @@ export function useAgentChat() {
     }));
 
     try {
-      const res = await api.post('/api/agent/interact', {
+      const res = await api.post('/api/v1/agent/interact', {
         user_message: text,
         ui_context: currentUi,
         available_actions: activeActionsList,

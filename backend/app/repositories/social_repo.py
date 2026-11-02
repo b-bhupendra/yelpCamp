@@ -311,3 +311,4 @@ class SocialRepository:
         return trip
 
 social_repo = SocialRepository()
+

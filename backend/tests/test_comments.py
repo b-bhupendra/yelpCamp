@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 def test_create_comment_and_rating_trigger(client: TestClient, auth_headers: dict):
     # 1. Create a campsite
     camp_res = client.post(
-        "/api/campgrounds",
+        "/api/v1/campgrounds",
         json={
             "title": "Starry Vista Ridge",
             "price": 30.0,
@@ -17,7 +17,7 @@ def test_create_comment_and_rating_trigger(client: TestClient, auth_headers: dic
 
     # 2. Add a comment with rating 5
     com_res = client.post(
-        f"/api/campgrounds/{camp_id}/comments",
+        f"/api/v1/campgrounds/{camp_id}/comments",
         json={"text": "Incredible skies and clean campsites!", "rating": 5},
         headers=auth_headers
     )
@@ -28,20 +28,20 @@ def test_create_comment_and_rating_trigger(client: TestClient, auth_headers: dic
 
     # 3. Add a second comment with rating 3
     client.post(
-        f"/api/campgrounds/{camp_id}/comments",
+        f"/api/v1/campgrounds/{camp_id}/comments",
         json={"text": "A bit windy, but great location.", "rating": 3},
         headers=auth_headers
     )
 
     # 4. Verify campground avg_rating was recalculated by SQLite triggers: (5 + 3) / 2 = 4.0
-    camp_check = client.get(f"/api/campgrounds/{camp_id}")
+    camp_check = client.get(f"/api/v1/campgrounds/{camp_id}")
     assert camp_check.status_code == 200
     assert camp_check.json()["avg_rating"] == 4.0
 
 def test_comment_threaded_replies(client: TestClient, auth_headers: dict):
     # 1. Create campsite
     camp_res = client.post(
-        "/api/campgrounds",
+        "/api/v1/campgrounds",
         json={
             "title": "Cascadia Timberline",
             "price": 40.0,
@@ -54,7 +54,7 @@ def test_comment_threaded_replies(client: TestClient, auth_headers: dict):
 
     # 2. Add top-level parent comment
     parent_res = client.post(
-        f"/api/campgrounds/{camp_id}/comments",
+        f"/api/v1/campgrounds/{camp_id}/comments",
         json={"text": "Is there potable water available at the north pitch?", "rating": None},
         headers=auth_headers
     )
@@ -63,7 +63,7 @@ def test_comment_threaded_replies(client: TestClient, auth_headers: dict):
 
     # 3. Add reply referencing parent_comment_id
     reply_res = client.post(
-        f"/api/campgrounds/{camp_id}/comments",
+        f"/api/v1/campgrounds/{camp_id}/comments",
         json={"text": "Yes, water spigots are active year-round by pitch 4.", "parent_comment_id": parent_id},
         headers=auth_headers
     )
@@ -72,7 +72,7 @@ def test_comment_threaded_replies(client: TestClient, auth_headers: dict):
     assert reply_data["parent_comment_id"] == parent_id
 
     # 4. Fetch comments tree
-    tree_res = client.get(f"/api/campgrounds/{camp_id}/comments")
+    tree_res = client.get(f"/api/v1/campgrounds/{camp_id}/comments")
     assert tree_res.status_code == 200
     tree = tree_res.json()
     assert len(tree) >= 1
