@@ -133,6 +133,14 @@
   color: transparent;
 }
 
+.aurora-hero-title {
+  background-image: linear-gradient(105deg, #ffffff 0%, #cbebff 22%, #38bdf8 48%, #fef08a 80%, #fbbf24 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  display: inline-block;
+}
+
 .aurora-border {
   border: 1px solid transparent;
   background:

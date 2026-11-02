@@ -196,7 +196,7 @@ export default function SleekMasterpieceHero() {
           <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping" />
           Under the Stars & Aurora
         </span>
-        <h1 className="text-[clamp(3.2rem,11.5vw,10.5rem)] font-display font-black tracking-[-0.035em] leading-[0.88] text-center bg-gradient-to-b from-white via-slate-100 to-sky-200 bg-clip-text text-transparent [filter:drop-shadow(0_4px_50px_rgba(3,7,18,0.95))_drop-shadow(0_12px_45px_rgba(14,165,233,0.35))]">
+        <h1 className="text-[clamp(3.2rem,11.5vw,10.5rem)] font-display font-black tracking-[-0.035em] leading-[0.88] text-center aurora-hero-title [filter:drop-shadow(0_4px_50px_rgba(3,7,18,0.95))_drop-shadow(0_12px_45px_rgba(14,165,233,0.35))] select-none">
           Meadows
         </h1>
         <p className="mt-3 sm:mt-4 text-xs sm:text-sm md:text-base font-medium text-slate-300/90 max-w-xs sm:max-w-md md:max-w-xl text-center tracking-wide leading-relaxed [text-shadow:0_2px_24px_rgba(3,7,18,0.95)]">

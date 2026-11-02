@@ -63,7 +63,7 @@ export default function Navbar() {
           className="cursor-pointer flex items-center gap-2.5 text-lg font-display font-black tracking-tight text-fg select-none"
         >
           <Icon.Tent size={22} className="text-secondary" />
-          <span>Meadows</span>
+          <span className="aurora-text font-black tracking-tight">Meadows</span>
         </Link>
       </Magnetic>
 

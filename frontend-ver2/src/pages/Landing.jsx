@@ -50,11 +50,11 @@ function ParallaxWrapper({ speed = 0.5, children, className = "" }) {
 
 /* Campsite quick feature tags */
 const HERO_FEATURES = [
-  { Icon: Icon.Moon, label: 'Dark-Sky Class 1' },
-  { Icon: Icon.Droplet, label: 'Riverside Pitches' },
-  { Icon: Icon.Flame, label: 'Fire Pit Safe' },
-  { Icon: Icon.Tree, label: 'Forest Clearings' },
-  { Icon: Icon.Tent, label: 'Tent & RV Access' },
+  { Icon: Icon.Moon, label: 'Dark-Sky Class 1', iconColor: 'text-indigo-300' },
+  { Icon: Icon.Droplet, label: 'Riverside Pitches', iconColor: 'text-sky-400' },
+  { Icon: Icon.Flame, label: 'Fire Pit Safe', iconColor: 'text-amber-400' },
+  { Icon: Icon.Tree, label: 'Forest Clearings', iconColor: 'text-emerald-400' },
+  { Icon: Icon.Tent, label: 'Tent & RV Access', iconColor: 'text-orange-400' },
 ];
 
 /* Core Wilderness Telemetry Pillars */
@@ -117,8 +117,8 @@ export default function Landing() {
             <ul className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2.5 max-w-xs sm:max-w-xl md:max-w-3xl">
               {HERO_FEATURES.map((f) => (
                 <li key={f.label}>
-                  <span className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-sky-400/25 bg-background/80 hover:bg-surface/80 backdrop-blur-xl px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold text-slate-300 shadow-[0_4px_20px_rgba(3,7,18,0.5)] hover:border-sky-400/50 hover:text-white hover:scale-[1.03] transition-all duration-200">
-                    <f.Icon size={13} className="text-secondary shrink-0" />
+                  <span className="group/pill inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-sky-400/25 bg-background/80 hover:bg-surface-2/90 backdrop-blur-xl px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold text-slate-300 shadow-[0_4px_20px_rgba(3,7,18,0.5)] hover:border-sky-400/60 hover:text-white hover:scale-[1.04] transition-all duration-200">
+                    <f.Icon size={13} className={`${f.iconColor} shrink-0 transition-transform duration-200 group-hover/pill:scale-110`} />
                     {f.label}
                   </span>
                 </li>
@@ -131,7 +131,7 @@ export default function Landing() {
               <Magnetic strength={0.25}>
                 <Link
                   to="/campgrounds"
-                  className="group relative cursor-pointer w-full sm:w-auto inline-flex items-center justify-center px-8 sm:px-12 py-3.5 sm:py-5 min-h-[48px] rounded-full font-bold text-xs uppercase tracking-[0.2em] sm:tracking-[0.24em] text-on-primary bg-primary overflow-hidden transition-all duration-300 hover:scale-[1.04] active:scale-95 shadow-[0_0_35px_rgba(14,165,233,0.35)] hover:shadow-[0_0_55px_rgba(14,165,233,0.6)]"
+                  className="group relative cursor-pointer w-full sm:w-auto inline-flex items-center justify-center px-8 sm:px-12 py-3.5 sm:py-5 min-h-[48px] rounded-full font-extrabold text-xs uppercase tracking-[0.2em] sm:tracking-[0.24em] bg-gradient-to-r from-sky-400 via-sky-300 to-amber-300 hover:from-sky-300 hover:via-amber-200 hover:to-amber-400 text-slate-950 overflow-hidden transition-all duration-300 hover:scale-[1.04] active:scale-95 shadow-[0_0_35px_rgba(14,165,233,0.35)] hover:shadow-[0_0_55px_rgba(251,191,36,0.45)]"
                 >
                   <span className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                   <span className="relative inline-flex items-center gap-2.5">
