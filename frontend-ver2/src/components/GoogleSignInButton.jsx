@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 
 /**
  * GoogleSignInButton
- * Redesigned custom Google authentication control tailored to YelpCamp's dark Aurora theme.
+ * Redesigned custom Google authentication control tailored to Meadows' dark Aurora theme.
  * Uses a seamless overlay architecture for 100% native OAuth compliance without jarring stock iframes.
  */
 export default function GoogleSignInButton({ text = "continue_with" }) {

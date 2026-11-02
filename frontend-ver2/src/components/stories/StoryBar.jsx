@@ -28,7 +28,7 @@ export default function StoryBar({
   // Load viewed photo IDs from localStorage
   useEffect(() => {
     try {
-      const viewed = JSON.parse(localStorage.getItem('yelpcamp_viewed_stories') || '[]');
+      const viewed = JSON.parse(localStorage.getItem('meadows_viewed_stories') || localStorage.getItem('yelpcamp_viewed_stories') || '[]');
       setViewedPhotoIds(viewed);
     } catch (e) {
       setViewedPhotoIds([]);

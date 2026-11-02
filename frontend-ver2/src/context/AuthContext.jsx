@@ -10,8 +10,9 @@ export const AuthProvider = ({ children }) => {
  
   const [user, setUser] = useState(() => {
     try {
-      const token = localStorage.getItem('yelpcamp_token');
+      const token = localStorage.getItem('meadows_token') || localStorage.getItem('yelpcamp_token');
       if (!token) {
+        localStorage.removeItem('meadows_user');
         localStorage.removeItem('yelpcamp_user');
         return null;
       }
@@ -20,6 +21,8 @@ export const AuthProvider = ({ children }) => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         if (payload.exp && payload.exp * 1000 < Date.now()) {
           console.warn('[Auth] Stored token has expired. Clearing session.');
+          localStorage.removeItem('meadows_token');
+          localStorage.removeItem('meadows_user');
           localStorage.removeItem('yelpcamp_token');
           localStorage.removeItem('yelpcamp_user');
           return null;
@@ -27,7 +30,7 @@ export const AuthProvider = ({ children }) => {
       } catch {
         // Non-JWT token
       }
-      const saved = localStorage.getItem('yelpcamp_user');
+      const saved = localStorage.getItem('meadows_user') || localStorage.getItem('yelpcamp_user');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
@@ -35,13 +38,14 @@ export const AuthProvider = ({ children }) => {
   });
 
   const [loading, setLoading] = useState(() => {
-    return typeof window !== 'undefined' && !!localStorage.getItem('yelpcamp_token');
+    return typeof window !== 'undefined' && !!(localStorage.getItem('meadows_token') || localStorage.getItem('yelpcamp_token'));
   });
 
   const checkAuth = async () => {
-    const token = localStorage.getItem('yelpcamp_token');
+    const token = localStorage.getItem('meadows_token') || localStorage.getItem('yelpcamp_token');
     if (!token) {
       setUser(null);
+      localStorage.removeItem('meadows_user');
       localStorage.removeItem('yelpcamp_user');
       setLoading(false);
       return;
@@ -51,11 +55,13 @@ export const AuthProvider = ({ children }) => {
       const response = await api.get('/api/v1/me');
       if (response.data.user) {
         setUser(response.data.user);
-        localStorage.setItem('yelpcamp_user', JSON.stringify(response.data.user));
+        localStorage.setItem('meadows_user', JSON.stringify(response.data.user));
       }
     } catch (err) {
       console.log('Not logged in or token expired');
       setUser(null);
+      localStorage.removeItem('meadows_user');
+      localStorage.removeItem('meadows_token');
       localStorage.removeItem('yelpcamp_user');
       localStorage.removeItem('yelpcamp_token');
     } finally {
@@ -80,10 +86,10 @@ export const AuthProvider = ({ children }) => {
     const response = await api.post('/api/v1/login', { username, password });
     const data = response.data;
     if (data.access_token) {
-      localStorage.setItem('yelpcamp_token', data.access_token);
+      localStorage.setItem('meadows_token', data.access_token);
     }
     setUser(data.user);
-    localStorage.setItem('yelpcamp_user', JSON.stringify(data.user));
+    localStorage.setItem('meadows_user', JSON.stringify(data.user));
     return data;
   };
 
@@ -91,10 +97,10 @@ export const AuthProvider = ({ children }) => {
     const response = await api.post('/api/v1/register', { username, password });
     const data = response.data;
     if (data.access_token) {
-      localStorage.setItem('yelpcamp_token', data.access_token);
+      localStorage.setItem('meadows_token', data.access_token);
     }
     setUser(data.user);
-    localStorage.setItem('yelpcamp_user', JSON.stringify(data.user));
+    localStorage.setItem('meadows_user', JSON.stringify(data.user));
     return data;
   };
 
@@ -102,10 +108,10 @@ export const AuthProvider = ({ children }) => {
     const response = await api.post('/api/v1/auth/google', { token: credential });
     const data = response.data;
     if (data.access_token) {
-      localStorage.setItem('yelpcamp_token', data.access_token);
+      localStorage.setItem('meadows_token', data.access_token);
     }
     setUser(data.user);
-    localStorage.setItem('yelpcamp_user', JSON.stringify(data.user));
+    localStorage.setItem('meadows_user', JSON.stringify(data.user));
     return data;
   };
 
@@ -116,6 +122,8 @@ export const AuthProvider = ({ children }) => {
       console.warn('Logout notice:', e);
     }
     setUser(null);
+    localStorage.removeItem('meadows_user');
+    localStorage.removeItem('meadows_token');
     localStorage.removeItem('yelpcamp_user');
     localStorage.removeItem('yelpcamp_token');
   };
@@ -123,7 +131,7 @@ export const AuthProvider = ({ children }) => {
   const updateAvatar = (avatarUrl) => {
     setUser(prev => {
       const updated = { ...prev, avatar_url: avatarUrl };
-      localStorage.setItem('yelpcamp_user', JSON.stringify(updated));
+      localStorage.setItem('meadows_user', JSON.stringify(updated));
       return updated;
     });
   };

@@ -72,15 +72,15 @@ export const UI_CAPABILITY_MANIFEST = [
     route: "/campgrounds",
     dom_selector: "#nav-logout-btn",
     risk_level: "MUTATE",
-    description: "Terminate the active user session and sign out of YelpCamp.",
+    description: "Terminate the active user session and sign out of Meadows.",
   },
   {
     id: "user_register",
-    feature_name: "Join YelpCamp",
+    feature_name: "Join Meadows",
     route: "/register",
     dom_selector: "#nav-register",
     risk_level: "SAFE",
-    description: "Create a new wilderness explorer account on YelpCamp.",
+    description: "Create a new wilderness explorer account on Meadows.",
   },
   {
     id: "like_campground",

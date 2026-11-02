@@ -1,6 +1,6 @@
-# YelpCamp — Aurora Design System
+# Meadows — Aurora Design System
 
-Source of truth for the visual system applied to the YelpCamp front end.
+Source of truth for the visual system applied to the Meadows front end.
 Derived with the **UI UX Pro Max** skill (`--design-system`), then adapted to a
 dark, cinematic product.
 

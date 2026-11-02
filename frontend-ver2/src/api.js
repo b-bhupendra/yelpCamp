@@ -8,7 +8,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('yelpcamp_token');
+  const token = localStorage.getItem('meadows_token') || localStorage.getItem('yelpcamp_token');
   if (token) {
     // Proactively check if JWT token is expired before sending out any request
     try {
@@ -17,6 +17,8 @@ api.interceptors.request.use((config) => {
         const payload = JSON.parse(atob(parts[1]));
         if (payload.exp && payload.exp * 1000 <= Date.now()) {
           console.warn('[Auth] Stored token expired client-side. Clearing credentials before request.');
+          localStorage.removeItem('meadows_token');
+          localStorage.removeItem('meadows_user');
           localStorage.removeItem('yelpcamp_token');
           localStorage.removeItem('yelpcamp_user');
           if (typeof window !== 'undefined') {
@@ -55,7 +57,9 @@ api.interceptors.response.use(
         url.includes('/api/v1/auth/google');
 
       if (!isAuthEndpoint) {
-        const hadToken = !!localStorage.getItem('yelpcamp_token');
+        const hadToken = !!(localStorage.getItem('meadows_token') || localStorage.getItem('yelpcamp_token'));
+        localStorage.removeItem('meadows_token');
+        localStorage.removeItem('meadows_user');
         localStorage.removeItem('yelpcamp_token');
         localStorage.removeItem('yelpcamp_user');
 

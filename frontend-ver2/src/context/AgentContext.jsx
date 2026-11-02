@@ -66,7 +66,7 @@ export function AgentProvider({ children }) {
     const syncManifest = async () => {
       try {
         const manifestStr = JSON.stringify(UI_CAPABILITY_MANIFEST);
-        const cachedHash = localStorage.getItem('yelpcamp_ui_manifest_hash');
+        const cachedHash = localStorage.getItem('meadows_ui_manifest_hash') || localStorage.getItem('yelpcamp_ui_manifest_hash');
         let hash = 0;
         for (let i = 0; i < manifestStr.length; i++) {
           hash = (hash << 5) - hash + manifestStr.charCodeAt(i);
@@ -76,7 +76,7 @@ export function AgentProvider({ children }) {
 
         if (cachedHash !== currentHash) {
           await api.post('/api/v1/agent/sync-ui', { items: UI_CAPABILITY_MANIFEST });
-          localStorage.setItem('yelpcamp_ui_manifest_hash', currentHash);
+          localStorage.setItem('meadows_ui_manifest_hash', currentHash);
           console.info('[Agent Manifest] Auto-synced UI capabilities to Vector DB.');
         }
       } catch (err) {

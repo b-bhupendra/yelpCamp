@@ -196,8 +196,8 @@ export default function SleekMasterpieceHero() {
           <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping" />
           Under the Stars & Aurora
         </span>
-        <h1 className="text-[clamp(3rem,11.5vw,12rem)] font-display font-black tracking-[-0.03em] leading-[0.88] text-center text-fg [text-shadow:0_4px_60px_rgba(3,7,18,0.95)]">
-          Yelp<br />Camp
+        <h1 className="text-[clamp(2.75rem,10.5vw,10rem)] font-display font-black tracking-[-0.03em] leading-[0.9] text-center text-fg [text-shadow:0_4px_60px_rgba(3,7,18,0.95)]">
+          Meadows
         </h1>
       </motion.div>
 

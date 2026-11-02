@@ -247,7 +247,7 @@ export default function AIAssistantDock() {
     if (location.pathname === '/campgrounds/new') return 'Hosting Form';
     if (uiContext.active_campground_title) return `Viewing: ${uiContext.active_campground_title}`;
     if (location.pathname.startsWith('/campgrounds/')) return 'Viewing Campsite';
-    return 'YelpCamp';
+    return 'Meadows';
   };
 
   return (
@@ -258,7 +258,7 @@ export default function AIAssistantDock() {
           type="button"
           onClick={() => setIsOpen(true)}
           className="group relative flex items-center gap-3 px-4 py-3 min-h-[48px] rounded-full bg-background/90 hover:bg-background border border-sky-400/30 hover:border-sky-400/60 backdrop-blur-xl shadow-[0_8px_32px_rgba(3,7,18,0.7),0_0_20px_rgba(56,189,248,0.2)] transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] cursor-pointer focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:outline-none"
-          aria-label="Open YelpCamp AI Co-Pilot"
+          aria-label="Open Meadows AI Co-Pilot"
         >
           {/* Animated pulsing aurora ring */}
           <span className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-emerald-500/20 via-sky-500/30 to-orange-500/20 blur-sm opacity-60 group-hover:opacity-100 transition-opacity" />

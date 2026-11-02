@@ -1,6 +1,6 @@
-# Frontend Context (`FE_CONTEXT.md`) — YelpCamp `frontend-ver2`
+# Frontend Context (`FE_CONTEXT.md`) — Meadows `frontend-ver2`
 
-> **Quick Summary**: YelpCamp `frontend-ver2` is a React 19 Single Page Application (SPA) built on Vite, Tailwind CSS v4, and Lucide/Feather icons. It features a dark-mode outdoor aesthetic with procedural 2D Canvas ambient sky effects, smooth scrolling (Lenis), magnetic cursor interactions, and a bidirectional Gemini-powered AI Co-Pilot with Dynamic UI State Machine actions.
+> **Quick Summary**: Meadows `frontend-ver2` is a React 19 Single Page Application (SPA) built on Vite, Tailwind CSS v4, and Lucide/Feather icons. It features a dark-mode outdoor aesthetic with procedural 2D Canvas ambient sky effects, smooth scrolling (Lenis), magnetic cursor interactions, and a bidirectional Gemini-powered AI Co-Pilot with Dynamic UI State Machine actions.
 
 ---
 

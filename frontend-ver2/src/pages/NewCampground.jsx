@@ -52,7 +52,7 @@ export default function NewCampground() {
 
   // Hydrate AI draft from sessionStorage if navigated from a cloned/similar campsite
   useEffect(() => {
-    const savedDraft = sessionStorage.getItem('yelpcamp_ai_draft');
+    const savedDraft = sessionStorage.getItem('meadows_ai_draft') || sessionStorage.getItem('yelpcamp_ai_draft');
     if (savedDraft) {
       try {
         const parsed = JSON.parse(savedDraft);
@@ -62,6 +62,7 @@ export default function NewCampground() {
         if (parsed.description) setDescription(parsed.description);
         if (parsed.image) setCoverImage(parsed.image);
         if (parsed.amenities && Array.isArray(parsed.amenities)) setSelectedAmenities(parsed.amenities);
+        sessionStorage.removeItem('meadows_ai_draft');
         sessionStorage.removeItem('yelpcamp_ai_draft');
         toast.info('Aurora Co-Pilot pre-filled your draft! Review and click Publish when ready.');
       } catch (err) {

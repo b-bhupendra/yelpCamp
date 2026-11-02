@@ -1,5 +1,5 @@
 /**
- * High-reliability image fallback utility for YelpCamp.
+ * High-reliability image fallback utility for Meadows.
  * Guarantees that broken CDN links or offline URLs never show a broken image icon.
  */
 

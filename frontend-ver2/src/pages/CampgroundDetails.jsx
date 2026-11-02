@@ -184,6 +184,7 @@ export default function CampgroundDetails() {
         image: campground?.image || '',
         amenities: campground?.amenities || [],
       };
+      sessionStorage.setItem('meadows_ai_draft', JSON.stringify(draft));
       sessionStorage.setItem('yelpcamp_ai_draft', JSON.stringify(draft));
       navigate('/campgrounds/new');
       return { status: 'navigated_to_draft', draft };

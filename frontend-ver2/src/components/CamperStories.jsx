@@ -16,7 +16,7 @@ const STORIES = [
     badge: "Verified Camper",
   },
   {
-    quote: "No inflated hotel prices or booked-out state parks. YelpCamp gave us an untouched clearing right beside the river in Olympic Peninsula.",
+    quote: "No inflated hotel prices or booked-out state parks. Meadows gave us an untouched clearing right beside the river in Olympic Peninsula.",
     author: "Marcus Thorne",
     role: "Trail Runner & Vanlifer",
     campsite: "Fern Hollow Sanctuary",

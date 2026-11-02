@@ -68,10 +68,10 @@ export default function StoryViewerModal({
 
       // Mark photo as viewed in localStorage
       try {
-        const viewed = JSON.parse(localStorage.getItem('yelpcamp_viewed_stories') || '[]');
+        const viewed = JSON.parse(localStorage.getItem('meadows_viewed_stories') || localStorage.getItem('yelpcamp_viewed_stories') || '[]');
         if (!viewed.includes(currentPhoto.id)) {
           viewed.push(currentPhoto.id);
-          localStorage.setItem('yelpcamp_viewed_stories', JSON.stringify(viewed));
+          localStorage.setItem('meadows_viewed_stories', JSON.stringify(viewed));
         }
       } catch (e) {
         // ignore localStorage error
