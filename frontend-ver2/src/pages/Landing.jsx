@@ -100,7 +100,7 @@ export default function Landing() {
           SECTION 1 — HERO SECTION
           Aurora sky + 3D Liquid Chrome Centerpiece + Campsite Horizon
           ═══════════════════════════════════════ */}
-      <section className="relative min-h-[100dvh] h-[100dvh] md:h-screen flex flex-col justify-end overflow-hidden pb-[12vh] sm:pb-[16vh] md:pb-[16vh]">
+      <section className="relative min-h-[100dvh] h-[100dvh] md:h-screen flex flex-col justify-end overflow-hidden pb-[6vh] sm:pb-[8vh] md:pb-[9vh]">
         {/* Camp Horizon Silhouette with glowing tent and campfire */}
         <div className="absolute inset-x-0 bottom-0 z-[5] h-[36%] sm:h-[38%] pointer-events-none" aria-hidden="true">
           <CampHorizon />
@@ -112,12 +112,12 @@ export default function Landing() {
         </div>
 
         {/* Hero Quick Tags & Magnetic CTA Button */}
-        <div className="relative z-50 flex flex-col items-center gap-4 sm:gap-6 px-4 sm:px-6">
+        <div className="relative z-50 flex flex-col items-center gap-3.5 sm:gap-5 px-4 sm:px-6">
           <ScrollReveal priority={true} variant="fade-up" delay={150} duration={700}>
             <ul className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2.5 max-w-xs sm:max-w-xl md:max-w-3xl">
               {HERO_FEATURES.map((f) => (
                 <li key={f.label}>
-                  <span className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-sky-400/20 bg-background/70 backdrop-blur-md px-2.5 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-medium text-fg-muted shadow-sm hover:border-secondary/40 hover:text-fg transition-colors duration-200">
+                  <span className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-sky-400/25 bg-background/80 hover:bg-surface/80 backdrop-blur-xl px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold text-slate-300 shadow-[0_4px_20px_rgba(3,7,18,0.5)] hover:border-sky-400/50 hover:text-white hover:scale-[1.03] transition-all duration-200">
                     <f.Icon size={13} className="text-secondary shrink-0" />
                     {f.label}
                   </span>

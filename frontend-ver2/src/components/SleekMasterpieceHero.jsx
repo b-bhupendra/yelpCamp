@@ -29,7 +29,7 @@ function LiquidChromeGeometry({ isMobile, isTouch }) {
   });
 
   const geoScale = isMobile ? 0.78 : 1.15;
-  const geoY = isMobile ? 0.22 : 0.42;
+  const geoY = isMobile ? 0.08 : 0.18;
 
   return (
     <Float speed={2} rotationIntensity={0.2} floatIntensity={0.5}>
@@ -190,15 +190,18 @@ export default function SleekMasterpieceHero() {
       {/* LAYER 2: typography */}
       <motion.div
         style={reduced ? undefined : { y: yText, opacity: opacityText }}
-        className="absolute inset-0 z-20 flex flex-col items-center justify-start pt-[10dvh] sm:pt-[12dvh] md:pt-[15vh] pointer-events-none px-4"
+        className="absolute inset-0 z-20 flex flex-col items-center justify-start pt-[15dvh] sm:pt-[17dvh] md:pt-[20vh] pointer-events-none px-4"
       >
-        <span className="inline-flex items-center gap-2 px-3 py-1 sm:px-3.5 mb-3 sm:mb-4 rounded-full border border-sky-400/20 bg-background/60 backdrop-blur-md text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.22em] sm:tracking-[0.25em] text-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.2)]">
+        <span className="inline-flex items-center gap-2 px-3.5 py-1.5 mb-3.5 sm:mb-4 rounded-full border border-sky-400/30 bg-background/70 backdrop-blur-md text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.24em] text-sky-400 shadow-[0_0_24px_rgba(56,189,248,0.25)]">
           <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping" />
           Under the Stars & Aurora
         </span>
-        <h1 className="text-[clamp(2.75rem,10.5vw,10rem)] font-display font-black tracking-[-0.03em] leading-[0.9] text-center text-fg [text-shadow:0_4px_60px_rgba(3,7,18,0.95)]">
+        <h1 className="text-[clamp(3.2rem,11.5vw,10.5rem)] font-display font-black tracking-[-0.035em] leading-[0.88] text-center bg-gradient-to-b from-white via-slate-100 to-sky-200 bg-clip-text text-transparent [filter:drop-shadow(0_4px_50px_rgba(3,7,18,0.95))_drop-shadow(0_12px_45px_rgba(14,165,233,0.35))]">
           Meadows
         </h1>
+        <p className="mt-3 sm:mt-4 text-xs sm:text-sm md:text-base font-medium text-slate-300/90 max-w-xs sm:max-w-md md:max-w-xl text-center tracking-wide leading-relaxed [text-shadow:0_2px_24px_rgba(3,7,18,0.95)]">
+          Discover extraordinary campsites, secret clearings, and dark-sky sanctuaries.
+        </p>
       </motion.div>
 
       {/* Fade into the rest of the page */}
