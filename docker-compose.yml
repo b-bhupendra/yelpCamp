@@ -1,0 +1,61 @@
+services:
+  # =========================================================================
+  # 1. Meadows FastAPI Backend (Containerized Local Dev with Hot-Reload)
+  # =========================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: meadows-backend-dev
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    env_file:
+      - ./backend/.env
+    environment:
+      - PORT=8000
+      - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=development
+
+  # =========================================================================
+  # 2. Automated Test Suite (Isolated Linux Container Runner)
+  # =========================================================================
+  test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: meadows-backend-test
+    command: python -m pytest tests/ -v
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    env_file:
+      - ./backend/.env.test
+    environment:
+      - USE_TURSO=False
+      - DATABASE_URL=sqlite:///./test.db
+    profiles:
+      - test
+
+  # =========================================================================
+  # 3. Optional: Frontend Container (Full-Stack Dev)
+  # =========================================================================
+  frontend:
+    image: node:20-alpine
+    container_name: meadows-frontend-dev
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend-ver2:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    profiles:
+      - full-stack
+

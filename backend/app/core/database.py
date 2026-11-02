@@ -4,16 +4,46 @@ from contextlib import contextmanager
 from sqlalchemy import inspect, event
 from sqlmodel import create_engine, SQLModel, Session
 from app.core.config import settings
-from app.core.turso_engine import TursoConnection
 
 logger = logging.getLogger(__name__)
 
 if settings.USE_TURSO and settings.TURSO_AUTH_TOKEN and settings.TURSO_DATABASE_URL:
-    engine = create_engine(
-        "sqlite://",
-        creator=lambda: TursoConnection(settings.TURSO_DATABASE_URL, settings.TURSO_AUTH_TOKEN),
-        echo=False
-    )
+    try:
+        import sqlalchemy_libsql
+        # Official Turso SQLAlchemy Dialect (sqlite+libsql://)
+        clean_host = (
+            settings.TURSO_DATABASE_URL
+            .replace("https://", "")
+            .replace("http://", "")
+            .replace("libsql://", "")
+            .rstrip("/")
+        )
+        turso_url = f"sqlite+libsql://{clean_host}?secure=true"
+        engine = create_engine(
+            turso_url,
+            connect_args={"auth_token": settings.TURSO_AUTH_TOKEN, "check_same_thread": False},
+            echo=False
+        )
+        logger.info("[Database Engine] Connected via official native sqlalchemy-libsql driver.")
+    except Exception as e:
+        logger.info(f"[Database Engine] Native sqlalchemy-libsql unavailable ({e}), using official pure-Python turso-serverless driver.")
+        import turso_serverless
+
+        def get_turso_serverless_connection():
+            conn = turso_serverless.connect(
+                settings.TURSO_DATABASE_URL,
+                auth_token=settings.TURSO_AUTH_TOKEN
+            )
+            # SQLAlchemy pysqlite dialect expects create_function/create_collation hooks
+            conn.create_function = lambda *args, **kwargs: None
+            conn.create_collation = lambda *args, **kwargs: None
+            return conn
+
+        engine = create_engine(
+            "sqlite://",
+            creator=get_turso_serverless_connection,
+            echo=False
+        )
 else:
     connect_args = {"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {}
     engine = create_engine(settings.DATABASE_URL, echo=False, connect_args=connect_args)
