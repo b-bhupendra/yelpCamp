@@ -7,6 +7,8 @@ __pycache__/
 *.pyo
 *.pyd
 .pytest_cache/
+tests/
+test.db*
 .vercel/
 .vercelignore
 database.db*
@@ -14,4 +16,5 @@ uploads/
 test_*.py
 seed.py
 migrate_*.py
-.env.local
+.env*
+!.env.example
