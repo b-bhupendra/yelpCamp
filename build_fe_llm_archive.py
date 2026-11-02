@@ -143,7 +143,7 @@ def main():
 
     # 1. Build single-file digest for LLMs
     with open(context_txt, "w", encoding="utf-8") as out:
-        out.write("# YELPCAMP FRONTEND (frontend-ver2) CODEBASE ARCHIVE FOR LLM INGESTION\n")
+        out.write("# MEADOWS FRONTEND (frontend-ver2) CODEBASE ARCHIVE FOR LLM INGESTION\n")
         out.write(f"# Generated: {utc_now} ({local_now})\n")
         out.write(f"# Git: {git_info}\n")
         out.write(f"# Target Directory: frontend-ver2\n")

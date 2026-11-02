@@ -108,6 +108,9 @@ def is_excluded(path: Path) -> bool:
     if name.startswith(".env") or ".env." in name or name == ".env":
         return True
 
+    if name.startswith("test.db") or name.startswith("database.db"):
+        return True
+
     # Check excluded files
     if name in EXCLUDED_FILES:
         return True
@@ -160,8 +163,10 @@ def main():
     print(f">> Total eligible files found: {len(files)}")
 
     CONTEXT_DIR.mkdir(parents=True, exist_ok=True)
-    context_txt = CONTEXT_DIR / "yelpcamp_llm_codebase.txt"
-    context_zip = CONTEXT_DIR / "yelpcamp_clean_codebase.zip"
+    context_txt = CONTEXT_DIR / "meadows_llm_codebase.txt"
+    context_zip = CONTEXT_DIR / "meadows_clean_codebase.zip"
+    legacy_txt = CONTEXT_DIR / "yelpcamp_llm_codebase.txt"
+    legacy_zip = CONTEXT_DIR / "yelpcamp_clean_codebase.zip"
 
     git_info = get_git_info()
     utc_now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -172,7 +177,7 @@ def main():
 
     # 1. Build text digest for LLMs
     with open(context_txt, "w", encoding="utf-8") as out:
-        out.write("# YELPCAMP FULL CODEBASE ARCHIVE FOR LLM INGESTION\n")
+        out.write("# MEADOWS FULL CODEBASE ARCHIVE FOR LLM INGESTION\n")
         out.write(f"# Generated: {utc_now} ({local_now})\n")
         out.write(f"# Git: {git_info}\n")
         out.write(f"# Total Files: {len(files)}\n")
@@ -211,6 +216,9 @@ def main():
             except Exception as e:
                 out.write(f"[Error reading file: {e}]\n\n")
 
+    # Copy to legacy filenames for full backward compatibility
+    shutil.copyfile(context_txt, legacy_txt)
+
     print(f">> Created LLM digest: {context_txt.relative_to(ROOT_DIR)}")
     print(f">> Total lines of code: {total_lines:,}")
     print(f">> Total characters: {total_chars:,} (~{total_chars // 4:,} estimated tokens)")
@@ -221,6 +229,8 @@ def main():
         for p in files:
             rel = str(p.relative_to(ROOT_DIR)).replace("\\", "/")
             zf.write(p, arcname=rel)
+
+    shutil.copyfile(context_zip, legacy_zip)
 
     print(f">> Created clean source zip: {context_zip.relative_to(ROOT_DIR)} ({context_zip.stat().st_size / 1024:.1f} KB)")
     print(">> Archive creation completed successfully.")

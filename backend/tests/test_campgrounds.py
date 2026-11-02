@@ -83,3 +83,36 @@ def test_update_and_delete_campground(client: TestClient, auth_headers: dict):
     # 4. Verify 404
     verify_res = client.get(f"/api/v1/campgrounds/{camp_id}")
     assert verify_res.status_code == 404
+
+def test_campgrounds_pagination(client: TestClient, auth_headers: dict):
+    # Create 5 campsites
+    for i in range(5):
+        client.post(
+            "/api/v1/campgrounds",
+            json={
+                "title": f"Pagination Camp #{i}",
+                "price": 20.0 + i,
+                "description": f"Campground {i} description",
+                "location": f"Zone {i}"
+            },
+            headers=auth_headers
+        )
+
+    # Request limit=2, page=1
+    p1 = client.get("/api/v1/campgrounds?page=1&limit=2")
+    assert p1.status_code == 200
+    d1 = p1.json()
+    assert len(d1["items"]) == 2
+    assert d1["page"] == 1
+    assert d1["limit"] == 2
+    assert d1["has_next"] is True
+    assert d1["has_prev"] is False
+
+    # Request limit=2, page=2
+    p2 = client.get("/api/v1/campgrounds?page=2&limit=2")
+    assert p2.status_code == 200
+    d2 = p2.json()
+    assert len(d2["items"]) == 2
+    assert d2["page"] == 2
+    assert d2["has_prev"] is True
+    assert d1["items"][0]["id"] != d2["items"][0]["id"]

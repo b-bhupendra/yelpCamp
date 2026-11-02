@@ -33,7 +33,7 @@ export default function StoryUploadModal({
   // Fetch campsites list if opened globally without pre-selected campground
   useEffect(() => {
     if (isOpen && !campgroundId) {
-      api.get('/api/v1/campgrounds')
+      api.get('/api/v1/campgrounds', { params: { limit: 100 } })
         .then((res) => {
           const camps = res.data.items || res.data.campgrounds || (Array.isArray(res.data) ? res.data : []);
           setCampgrounds(camps);

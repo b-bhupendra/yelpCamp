@@ -4,28 +4,37 @@ import api from '../api';
 // In-memory SWR cache for instant transitions and zero skeleton time on revisit
 const campgroundsCache = new Map();
 
-export function useCampgrounds({ initialSearch = '', debounceMs = 300 } = {}) {
-  const cacheKey = `${initialSearch}_page_1`;
+export function useCampgrounds({ initialSearch = '', initialPage = 1, debounceMs = 300 } = {}) {
+  const [search, setSearch] = useState(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
+  const [page, setPage] = useState(initialPage);
+
+  const cacheKey = `${initialSearch}_page_${initialPage}`;
   const cachedData = campgroundsCache.get(cacheKey);
 
   const [campgrounds, setCampgrounds] = useState(cachedData?.items || []);
   const [loading, setLoading] = useState(!cachedData);
   const [error, setError] = useState(null);
-  const [search, setSearch] = useState(initialSearch);
   const [total, setTotal] = useState(cachedData?.total ?? 0);
-  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(cachedData?.totalPages ?? 1);
   const [hasNext, setHasNext] = useState(cachedData?.hasNext ?? false);
   const [hasPrev, setHasPrev] = useState(cachedData?.hasPrev ?? false);
-  const timerRef = useRef(null);
-  const isFirstMount = useRef(true);
 
-  const fetchCampgrounds = useCallback(async (searchQuery = search, pageNum = page) => {
+  const isFirstMount = useRef(true);
+  const searchTimeoutRef = useRef(null);
+
+  // Stable core fetcher that does not depend on changing states
+  const fetchPage = useCallback(async (searchQuery, pageNum) => {
     const currentKey = `${searchQuery || ''}_page_${pageNum}`;
     const cached = campgroundsCache.get(currentKey);
 
-    // If no cache, show loading skeleton; otherwise revalidate silently in background
-    if (!cached) {
+    if (cached) {
+      setCampgrounds(cached.items);
+      setTotal(cached.total);
+      setTotalPages(cached.totalPages);
+      setHasNext(cached.hasNext);
+      setHasPrev(cached.hasPrev);
+    } else {
       setLoading(true);
     }
     setError(null);
@@ -39,14 +48,13 @@ export function useCampgrounds({ initialSearch = '', debounceMs = 300 } = {}) {
         },
       });
 
-      const items = res.data.items || (Array.isArray(res.data) ? res.data : []);
+      const items = res.data.items || res.data.campgrounds || (Array.isArray(res.data) ? res.data : []);
       const newTotal = res.data.total ?? items.length;
       const newPage = res.data.page ?? pageNum;
-      const newTotalPages = res.data.total_pages ?? 1;
+      const newTotalPages = res.data.total_pages ?? res.data.pages ?? Math.max(1, Math.ceil(newTotal / 12));
       const newHasNext = res.data.has_next ?? (newPage < newTotalPages);
       const newHasPrev = res.data.has_prev ?? (newPage > 1);
 
-      // Update cache
       campgroundsCache.set(currentKey, {
         items,
         total: newTotal,
@@ -59,7 +67,6 @@ export function useCampgrounds({ initialSearch = '', debounceMs = 300 } = {}) {
 
       setCampgrounds(items);
       setTotal(newTotal);
-      setPage(newPage);
       setTotalPages(newTotalPages);
       setHasNext(newHasNext);
       setHasPrev(newHasPrev);
@@ -72,25 +79,40 @@ export function useCampgrounds({ initialSearch = '', debounceMs = 300 } = {}) {
     } finally {
       setLoading(false);
     }
-  }, [search, page]);
+  }, []);
 
-  // Initial fetch immediate; search updates debounced
+  // Debounce search input and reset page to 1
   useEffect(() => {
     if (isFirstMount.current) {
-      isFirstMount.current = false;
-      fetchCampgrounds(search, 1);
       return;
     }
 
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      fetchCampgrounds(search, 1);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
     }, debounceMs);
 
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     };
-  }, [search, debounceMs, fetchCampgrounds]);
+  }, [search, debounceMs]);
+
+  // Fetch when debouncedSearch or page changes
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+    }
+    fetchPage(debouncedSearch, page);
+  }, [debouncedSearch, page, fetchPage]);
+
+  // Safe page changer that clamps page to valid bounds
+  const changePage = useCallback((newPage) => {
+    setPage((prev) => {
+      const target = typeof newPage === 'function' ? newPage(prev) : newPage;
+      return Math.max(1, target);
+    });
+  }, []);
 
   return {
     campgrounds,
@@ -100,11 +122,11 @@ export function useCampgrounds({ initialSearch = '', debounceMs = 300 } = {}) {
     setSearch,
     total,
     page,
-    setPage,
+    setPage: changePage,
     totalPages,
     hasNext,
     hasPrev,
-    refetch: fetchCampgrounds,
+    refetch: () => fetchPage(debouncedSearch, page),
   };
 }
 

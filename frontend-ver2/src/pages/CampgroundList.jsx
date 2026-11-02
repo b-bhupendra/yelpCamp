@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import AmbientAtmosphere from '../components/AmbientAtmosphere';
 import Magnetic from '../components/Magnetic';
 import Icon from '../components/Icons';
@@ -7,6 +7,19 @@ import StoryBar from '../components/stories/StoryBar';
 import useCampgrounds from '../hooks/useCampgrounds';
 import CampgroundGridSkeleton from '../components/skeletons/CampgroundCardSkeleton';
 import { handleImageError } from '../utils/imageFallback';
+
+function getPageNumbers(current, total) {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, '...', total];
+  }
+  if (current >= total - 3) {
+    return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, '...', current - 1, current, current + 1, '...', total];
+}
 
 
 /* ───────────────────────────────────────────
@@ -70,6 +83,10 @@ function TiltCard({ children, className = "" }) {
 }
 
 export default function CampgroundList() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialPage = parseInt(searchParams.get('page') || '1', 10);
+  const initialSearch = searchParams.get('search') || '';
+
   const {
     campgrounds,
     loading,
@@ -83,7 +100,15 @@ export default function CampgroundList() {
     hasNext,
     hasPrev,
     refetch
-  } = useCampgrounds();
+  } = useCampgrounds({ initialSearch, initialPage });
+
+  // Sync active page & search to URL query string
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (page > 1) params.set('page', String(page));
+    if (search && search.trim()) params.set('search', search.trim());
+    setSearchParams(params, { replace: true });
+  }, [page, search, setSearchParams]);
 
   return (
     <div className="min-h-screen relative bg-background">
@@ -246,29 +271,54 @@ export default function CampgroundList() {
 
         {/* Official Pagination Controls */}
         {!loading && totalPages > 1 && (
-          <div className="mt-14 flex flex-col sm:flex-row justify-center items-center gap-4">
+          <div className="mt-14 flex flex-col sm:flex-row justify-center items-center gap-3">
             <button
               onClick={() => {
-                setPage(page - 1);
+                setPage((p) => Math.max(1, p - 1));
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               disabled={!hasPrev || loading}
               aria-label="Previous Page"
-              className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border border-border bg-surface-2/80 backdrop-blur text-fg disabled:opacity-30 hover:bg-surface-3 transition-colors flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed shadow-sm"
+              className="px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-xl border border-border bg-surface-2/80 backdrop-blur text-fg disabled:opacity-30 hover:bg-surface-3 transition-colors flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed shadow-sm"
             >
-              <Icon.ArrowLeft size={14} /> Previous
+              <Icon.ArrowLeft size={14} /> Prev
             </button>
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-fg-subtle px-4 py-2 rounded-xl bg-surface-1/40 border border-border/40">
-              Page <span className="text-secondary font-bold">{page}</span> of {totalPages}
+
+            {/* Numbered Page Buttons with Responsive Ellipses */}
+            <div className="flex items-center gap-1.5 overflow-x-auto max-w-full px-2 py-1">
+              {getPageNumbers(page, totalPages).map((p, idx) =>
+                p === '...' ? (
+                  <span key={`dots-${idx}`} className="px-2 text-xs text-fg-subtle select-none">
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => {
+                      setPage(p);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    disabled={loading || page === p}
+                    className={`cursor-pointer min-w-9 h-9 px-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center ${
+                      page === p
+                        ? 'bg-primary text-on-primary shadow-md scale-105 pointer-events-none'
+                        : 'border border-border/70 bg-surface-2/60 text-fg-subtle hover:text-fg hover:bg-surface-3'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
             </div>
+
             <button
               onClick={() => {
-                setPage(page + 1);
+                setPage((p) => Math.min(totalPages, p + 1));
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               disabled={!hasNext || loading}
               aria-label="Next Page"
-              className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border border-border bg-surface-2/80 backdrop-blur text-fg disabled:opacity-30 hover:bg-surface-3 transition-colors flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed shadow-sm"
+              className="px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-xl border border-border bg-surface-2/80 backdrop-blur text-fg disabled:opacity-30 hover:bg-surface-3 transition-colors flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed shadow-sm"
             >
               Next <Icon.ArrowRight size={14} />
             </button>

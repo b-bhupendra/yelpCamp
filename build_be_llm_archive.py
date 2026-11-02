@@ -88,6 +88,9 @@ def is_excluded(path: Path) -> bool:
     if name.startswith(".env") or ".env." in name or name == ".env":
         return True
 
+    if name.startswith("test.db") or name.startswith("database.db"):
+        return True
+
     if name in EXCLUDED_FILES:
         return True
 
@@ -154,7 +157,7 @@ def main():
 
     # 1. Build text digest for LLMs
     with open(context_txt, "w", encoding="utf-8") as out:
-        out.write("# YELPCAMP BACKEND CODEBASE ARCHIVE FOR LLM INGESTION\n")
+        out.write("# MEADOWS BACKEND CODEBASE ARCHIVE FOR LLM INGESTION\n")
         out.write(f"# Generated: {utc_now} ({local_now})\n")
         out.write(f"# Git: {git_info}\n")
         out.write(f"# Source Directory: {BE_DIR}\n")

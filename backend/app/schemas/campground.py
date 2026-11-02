@@ -75,6 +75,16 @@ class PaginatedCampgrounds(PaginatedResponse[CampgroundCard]):
     def pages(self) -> int:
         return self.total_pages
 
+    @computed_field
+    @property
+    def current_page(self) -> int:
+        return self.page
+
+    @computed_field
+    @property
+    def totalPages(self) -> int:
+        return self.total_pages
+
 class VoteResponse(SQLModel):
     message: str
     likes: int
